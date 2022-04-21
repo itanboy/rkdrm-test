@@ -54,7 +54,6 @@ int decode_png(struct png_file *pfd)
 	int ret;
 	int i, j,k;
 	uint32_t word;
-	int iPos = 0;
 	unsigned char **pucPngData; 
 	unsigned char *buf_cpy;
 
@@ -94,8 +93,6 @@ int decode_png(struct png_file *pfd)
 	png_destroy_read_struct(&pfd->png_ptr, &pfd->info_ptr, 0);
 	fclose(pfd->fp);
 }
-
-// BGRA
 
 int show_png(struct png_file *pfd,int x ,int y)
 {
