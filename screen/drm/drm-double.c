@@ -27,12 +27,14 @@ struct drm_device {
 drmModeConnector *conn;	//connetor相关的结构体
 drmModeRes *res;		//资源
 int fd;					//文件描述符
+uint32_t conn_id;
+uint32_t crtc_id;
 
-#define COLOR1 0XFF0000
-#define COLOR2 0X00FF00
-#define COLOR3 0X0000FF
+#define RED 0XFF0000
+#define GREEN 0X00FF00
+#define BLUE 0X0000FF
 
-struct drm_device buf;
+struct drm_device buf[2];
 
 
 static int drm_create_fb(struct drm_device *bo)
@@ -83,8 +85,6 @@ static void drm_destroy_fb(struct drm_device *bo)
 
 int drm_init()
 {
-	uint32_t conn_id;
-	uint32_t crtc_id;
 
 	//打开drm设备，设备会随设备树的更改而改变,多个设备时，请留一下每个屏幕设备对应的drm设备
 	fd = open("/dev/dri/card0", O_RDWR | O_CLOEXEC);
@@ -101,17 +101,24 @@ int drm_init()
 	printf("crtc = %d , conneter = %d\n",crtc_id,conn_id);
 
 	conn = drmModeGetConnector(fd, conn_id);
-	buf.width = conn->modes[0].hdisplay;
-	buf.height = conn->modes[0].vdisplay;
+	buf[0].width = conn->modes[0].hdisplay;
+	buf[0].height = conn->modes[0].vdisplay;
+
+	buf[1].width = conn->modes[0].hdisplay;
+	buf[1].height = conn->modes[0].vdisplay;
 
 	//打印屏幕分辨率
-	printf("width = %d , height = %d\n",buf.width,buf.height);
+	printf("width = %d , height = %d\n",buf[0].width,buf[0].height);
 
 	//创建framebuffer层
-	drm_create_fb(&buf);
+	drm_create_fb(&buf[0]);
+	drm_create_fb(&buf[1]);
 
 	//设置CRTCS
-	drmModeSetCrtc(fd, crtc_id, buf.fb_id,
+	drmModeSetCrtc(fd, crtc_id, buf[0].fb_id,
+			0, 0, &conn_id, 1, &conn->modes[0]);
+	
+	drmModeSetCrtc(fd, crtc_id, buf[1].fb_id,
 			0, 0, &conn_id, 1, &conn->modes[0]);
 
 	return 0;
@@ -119,7 +126,8 @@ int drm_init()
 
 int drm_exit()
 {
-	drm_destroy_fb(&buf);
+	drm_destroy_fb(&buf[0]);
+	drm_destroy_fb(&buf[1]);
 
 	drmModeFreeConnector(conn);
 
@@ -127,16 +135,83 @@ int drm_exit()
 
 	close(fd);
 }
+
+int drm_double_display(int i)
+{
+	if(i==0)
+		drmModeSetCrtc(fd, crtc_id, buf[0].fb_id,
+			0, 0, &conn_id, 1, &conn->modes[0]);
+	else if(i==1)
+		drmModeSetCrtc(fd, crtc_id, buf[1].fb_id,
+			0, 0, &conn_id, 1, &conn->modes[0]);
+	else
+		printf("no setting \n");
+}
+
+int drm_change_color(int j,uint32_t color)
+{
+	int i;
+	if(j==0)
+		for(i=0;i<buf[0].width*buf[0].height;i++)
+		buf[0].vaddr[i] = color;
+	else if(j==1)
+		for(i=0;i<buf[1].width*buf[1].height;i++)
+		buf[1].vaddr[i] = color;
+	else
+		printf("no setting \n");
+}
+
+
 int main(int argc, char **argv)
 {
 	int i;
 	drm_init();
 
 	//清屏设置颜色
-	for(i=0;i<buf.width*buf.height;i++)
-		buf.vaddr[i] = 0x123456;
+	for(i=0;i<buf[0].width*buf[0].height;i++)
+		buf[0].vaddr[i] = 0x123456;
 
-	sleep(2);
+	drmModeSetCrtc(fd, crtc_id, buf[0].fb_id,
+			0, 0, &conn_id, 1, &conn->modes[0]);
+	
+	sleep(1);
+	
+	for(i=0;i<buf[1].width*buf[1].height;i++)
+		buf[1].vaddr[i] = 0x654321;
+
+	drmModeSetCrtc(fd, crtc_id, buf[1].fb_id,
+			0, 0, &conn_id, 1, &conn->modes[0]);
+	
+	sleep(1);
+
+	for(i=0;i<100;i=i+10){
+		if(i== 10)
+			drm_change_color(0,RED);
+		else if(i== 20)
+			drm_change_color(0,GREEN);
+		else if(i== 30)
+			drm_change_color(0,BLUE);
+		else if(i== 40)
+			drm_change_color(0,0XFFFFFF);
+		else if(i== 50)
+			drm_change_color(1,RED);
+		else if(i== 60)
+			drm_change_color(1,GREEN);
+		else if(i== 70)
+			drm_change_color(1,BLUE);
+		else if(i== 80)
+			drm_change_color(1,0X000000);
+
+		sleep(1);
+		drm_double_display(0);
+		sleep(1);
+		drm_double_display(1);
+		sleep(1);
+		drm_double_display(0);
+
+		
+	}
+
 	drm_exit();
 
 	exit(0);
