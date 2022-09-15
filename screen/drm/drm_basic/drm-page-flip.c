@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
+#include <signal.h>
 
 struct drm_device {
 	uint32_t width;			//显示器的宽的像素点数量
@@ -24,8 +25,13 @@ struct drm_device {
  	struct drm_mode_map_dumb map;			//内存映射结构体
 };
 
+
+static int terminate;
 drmModeConnector *conn;	//connetor相关的结构体
 drmModeRes *res;		//资源
+drmEventContext ev;
+int count;
+
 int fd;					//文件描述符
 uint32_t conn_id;
 uint32_t crtc_id;
@@ -136,7 +142,7 @@ int drm_exit()
 	close(fd);
 }
 
-int drm_double_display(int i)
+int drm_set_display(int i)
 {
 	if(i==0)
 		drmModeSetCrtc(fd, crtc_id, buf[0].fb_id,
@@ -162,54 +168,48 @@ int drm_change_color(int j,uint32_t color)
 }
 
 
+static void drm_page_flip_handler(int fd, uint32_t frame,
+				    uint32_t sec, uint32_t usec,
+				    void *data)
+{
+	static int i = 0;
+	uint32_t crtc_id = *(uint32_t *)data;
+
+	i ^= 1;
+
+	drmModePageFlip(fd, crtc_id, buf[i].fb_id,
+			DRM_MODE_PAGE_FLIP_EVENT, data);
+	
+	count++;
+	printf("count is %d\n",count);
+	usleep(500000);
+}
+
 int main(int argc, char **argv)
 {
 	int i;
+
+	ev.version = DRM_EVENT_CONTEXT_VERSION;
+	ev.page_flip_handler = drm_page_flip_handler;
+
 	drm_init();
 
-	//清屏设置颜色
-	for(i=0;i<buf[0].width*buf[0].height;i++)
-		buf[0].vaddr[i] = 0x123456;
-
-	drmModeSetCrtc(fd, crtc_id, buf[0].fb_id,
-			0, 0, &conn_id, 1, &conn->modes[0]);
+	//设置Crtc-0颜色
+	drm_change_color(0,0x123456);
+	//设置Crtc-1颜色
+	drm_change_color(1,0x654321);
+	//设置Crtc-0显示
+	drm_set_display(0);
 	
-	sleep(1);
+	drmModePageFlip(fd, crtc_id, buf[0].fb_id,
+			DRM_MODE_PAGE_FLIP_EVENT, &crtc_id);
 	
-	for(i=0;i<buf[1].width*buf[1].height;i++)
-		buf[1].vaddr[i] = 0x654321;
-
-	drmModeSetCrtc(fd, crtc_id, buf[1].fb_id,
-			0, 0, &conn_id, 1, &conn->modes[0]);
-	
-	sleep(1);
-
-	for(i=0;i<100;i=i+10){
-		if(i== 10)
-			drm_change_color(0,RED);
-		else if(i== 20)
-			drm_change_color(0,GREEN);
-		else if(i== 30)
-			drm_change_color(0,BLUE);
-		else if(i== 40)
-			drm_change_color(0,0XFFFFFF);
-		else if(i== 50)
-			drm_change_color(1,RED);
-		else if(i== 60)
-			drm_change_color(1,GREEN);
-		else if(i== 70)
-			drm_change_color(1,BLUE);
-		else if(i== 80)
-			drm_change_color(1,0X000000);
-
-		sleep(1);
-		drm_double_display(0);
-		sleep(1);
-		drm_double_display(1);
-		sleep(1);
-		drm_double_display(0);
-
-		
+	while (1) {
+		//激活切换
+	 	drmHandleEvent(fd, &ev);
+		//切换20次停下
+		if(count == 20)
+			break;
 	}
 
 	drm_exit();
