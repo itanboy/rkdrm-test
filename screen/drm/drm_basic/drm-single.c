@@ -40,7 +40,7 @@ static int drm_create_fb(struct drm_device *bo)
 {
 	/* create a dumb-buffer, the pixel format is XRGB888 */
 	bo->create.width = bo->width;
-	bo->create.height = bo->height;
+	bo->create.height = bo->height*2;
 	bo->create.bpp = 32;
 
 	/* handle, pitch, size will be returned */
@@ -50,7 +50,7 @@ static int drm_create_fb(struct drm_device *bo)
 	bo->pitch = bo->create.pitch;
 	bo->size = bo->create.size;
 	bo->handle = bo->create.handle;
-	drmModeAddFB(fd, bo->width, bo->height, 24, 32, bo->pitch,
+	drmModeAddFB(fd, bo->width, bo->height*2, 24, 32, bo->pitch,
 			   bo->handle, &bo->fb_id);
 	
 	//每行占用字节数，共占用字节数，MAP_DUMB的句柄
@@ -109,32 +109,16 @@ int drm_init()
 	printf("connector_type = %d , count_encoders = %d\n",conn->connector_id,conn->count_encoders);
 	printf("mmWidth = %d , mmHeight = %d\n",conn->mmWidth,conn->mmHeight);
 	printf("count_modes = %d , count_props = %d\n",conn->count_modes,conn->count_props);
-
 	for(i=0;i<conn->count_props;i++)
 		printf("No.%d = %d\n",i,conn->props[i]);
-
-// typedef struct _drmModeConnector {
-// 	uint32_t connector_id;
-// 	uint32_t encoder_id; /**< Encoder currently connected to */
-// 	uint32_t connector_type;
-// 	uint32_t connector_type_id;
-// 	drmModeConnection connection;
-// 	uint32_t mmWidth, mmHeight; /**< HxW in millimeters */
-// 	drmModeSubPixel subpixel;
-
-// 	int count_modes;
-// 	drmModeModeInfoPtr modes;
-
-// 	int count_props;
-// 	uint32_t *props; /**< List of property ids */
-// 	uint64_t *prop_values; /**< List of property values */
-
-// 	int count_encoders;
-// 	uint32_t *encoders; /**< List of encoder ids */
-// } drmModeConnector, *drmModeConnectorPtr;
-
-
-
+	printf("\n\n");
+	printf("clock = %d , vrefresh = %d\n",conn->modes[0].clock,conn->modes[0].vrefresh);
+	printf("hdisplay = %d , vdisplay = %d\n",conn->modes[0].hdisplay,conn->modes[0].vdisplay);
+	printf("hsync_start = %d , vsync_start = %d\n",conn->modes[0].hsync_start,conn->modes[0].vsync_start);
+	printf("hsync_end = %d , vsync_end = %d\n",conn->modes[0].hsync_end,conn->modes[0].vsync_end);
+	printf("hskew = %d , vscan = %d\n",conn->modes[0].hskew,conn->modes[0].vscan);
+	printf("flags = %d , type = %d\n",conn->modes[0].flags,conn->modes[0].type);
+	printf("name = %s\n",conn->modes[0].name);
 
 	//创建framebuffer层
 	drm_create_fb(&buf);
@@ -160,10 +144,23 @@ int main(int argc, char **argv)
 	drm_init();
 	sleep(2);
 	//清屏设置颜色
+
+
 	for(i=0;i<buf.width*buf.height;i++)
 		buf.vaddr[i] = 0x123456;
 
+	for(i=buf.width*buf.height;i<buf.width*buf.height*2;i++)
+		buf.vaddr[i] = 0x654321;
+
+	printf("%ld\n",sizeof(buf.vaddr));
+
 	sleep(2);
+
+	drmModeSetCrtc(fd, crtc_id, buf.fb_id,
+			0, 720, &conn_id, 1, &conn->modes[0]);
+		
+	sleep(2);
+
 	drm_exit();
 
 	exit(0);

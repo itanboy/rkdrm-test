@@ -135,11 +135,8 @@ int drm_init()
 int drm_exit()
 {
 	drm_destroy_fb(&buf);
-
 	drmModeFreeConnector(conn);
-
 	drmModeFreeResources(res);
-
 	close(fd);
 }
 
@@ -154,26 +151,20 @@ int main(int argc, char **argv)
 	for(i=0;i<buf.width*buf.height;i++)
 		buf.vaddr[i] = 0x123456;
 
-	for(i=0;i<buf.width*buf.height;i++)
-		buf.vaddr[i] = 0x123456;
-	
-	for(j=0;j<3;j++){
-		for(i =j*buf.width*buf.height/3;i< (j+1)*buf.width*buf.height/3;i++)
-			buf.vaddr[i] = color_table[j];
-	}
+	// for(j=0;j<3;j++){
+	// 	for(i =j*buf.width*buf.height/3;i< (j+1)*buf.width*buf.height/3;i++)
+	// 		buf.vaddr[i] = color_table[j];
+	// }
 
-	sleep(2);
-	printf("ready\n");
-
-	drmModeSetPlane(fd, plane_id[0], crtc_id, buf.fb_id, 0,
-			80, 80, 250, 250,
-			200<<16, 400<<16, 50<<16, 50<<16);
-	
-	drmModeSetPlane(fd, plane_id[1], crtc_id, buf.fb_id, 0,
-			400, 800, 250, 250,
-			200<<16, 400<<16, 50<<16, 50<<16);
-	
 	getchar();
+	drmSetMaster(fd);
+	drmModeSetCursor(fd,crtc_id,buf.handle,360,720);
+
+	for (int i = 0; i < 100000; i++) {
+    	drmModeMoveCursor(fd, crtc_id, i % 1024, i % 1024);
+    	usleep(1000);
+  	}
+	// int drmModeSetCursor(int fd, uint32_t crtcId, uint32_t bo_handle, uint32_t width, uint32_t height);
 
 	drm_exit();
 	
