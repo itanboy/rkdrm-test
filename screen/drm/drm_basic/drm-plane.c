@@ -26,12 +26,12 @@ struct drm_device {
 
 drmModeConnector *conn;	//connetor相关的结构体
 drmModeRes *res;		//资源
-drmModePlaneRes *plane_res;
+drmModePlaneRes *plane_res;//图层资源
 
 int fd;					//文件描述符
 uint32_t conn_id;
 uint32_t crtc_id;
-uint32_t plane_id[3];
+uint32_t plane_id[3];	//图层id数组
 
 
 #define RED 0XFF0000
@@ -107,7 +107,6 @@ int drm_init()
 		printf("planes[%d]= %d\n",i,plane_id[i]);
 	}
 		
-
 	//获取drm的信息
 	res = drmModeGetResources(fd);
 	crtc_id = res->crtcs[0];
@@ -140,34 +139,36 @@ int drm_exit()
 	close(fd);
 }
 
-
 int main(int argc, char **argv)
 {
 	int i;
 	int j = 0;
 	drm_init();
 
-	//清屏设置颜色
-	for(i=0;i<buf.width*buf.height;i++)
-		buf.vaddr[i] = 0x123456;
-
-	// for(j=0;j<3;j++){
-	// 	for(i =j*buf.width*buf.height/3;i< (j+1)*buf.width*buf.height/3;i++)
-	// 		buf.vaddr[i] = color_table[j];
-	// }
+	//显示三色
+	for(j=0;j<3;j++){
+		for(i =j*buf.width*buf.height/3;i< (j+1)*buf.width*buf.height/3;i++)
+			buf.vaddr[i] = color_table[j];
+	}
 
 	getchar();
-	drmSetMaster(fd);
-	drmModeSetCursor(fd,crtc_id,buf.handle,360,720);
+	//将framebuffer截取部分放到图层一上，
+	//此时屏幕改变，将320x800的framebuffer区域拉伸到720x1280中
+	drmModeSetPlane(fd, plane_id[0], crtc_id, buf.fb_id, 0,
+			0, 0, 720, 1280,
+			0 << 16, 0 << 16, 320 << 16, 800 << 16);
 
-	for (int i = 0; i < 100000; i++) {
-    	drmModeMoveCursor(fd, crtc_id, i % 1024, i % 1024);
-    	usleep(1000);
-  	}
-	// int drmModeSetCursor(int fd, uint32_t crtcId, uint32_t bo_handle, uint32_t width, uint32_t height);
+	getchar();
+	//将framebuffer区域缩放一倍放到图层二上，把图层二的位置放到屏幕的(360,640)
+	//叠加在图层一上，可以看到图层二覆盖了图层一的部分区域
+	drmModeSetPlane(fd, plane_id[1], crtc_id, buf.fb_id, 0,
+			180, 640, 360, 640,
+			0 << 16, 0 << 16, 720 << 16, 1280 << 16);
+
+	getchar();
 
 	drm_exit();
 	
-
 	exit(0);
 }
+	

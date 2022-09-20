@@ -22,9 +22,14 @@ struct drm_device {
 	uint32_t fb_id;			//创建的framebuffer的id号
 	struct drm_mode_create_dumb create ;	//创建的dumb
  	struct drm_mode_map_dumb map;			//内存映射结构体
-	
 };
 
+struct property_crtc {
+	uint32_t blob_id;
+	uint32_t property_crtc_id;
+	uint32_t property_mode_id;
+	uint32_t property_active;
+};
 
 drmModeConnector *conn;	//connetor相关的结构体
 drmModeRes *res;		//资源
@@ -33,13 +38,17 @@ drmModePlaneRes *plane_res;
 int fd;					//文件描述符
 uint32_t conn_id;
 uint32_t crtc_id;
-uint32_t plane_id;
+uint32_t plane_id[3];
 
-#define COLOR1 0XFF0000
-#define COLOR2 0X00FF00
-#define COLOR3 0X0000FF
+#define RED 0XFF0000
+#define GREEN 0X00FF00
+#define BLUE 0X0000FF
+
+
+uint32_t color_table[6] = {RED,GREEN,BLUE,RED,GREEN,BLUE};
 
 struct drm_device buf;
+struct property_crtc pc;
 
 static int drm_create_fb(struct drm_device *bo)
 {
@@ -77,21 +86,31 @@ static int drm_create_fb(struct drm_device *bo)
 static void drm_destroy_fb(struct drm_device *bo)
 {
 	struct drm_mode_destroy_dumb destroy = {};
-
 	drmModeRmFB(fd, bo->fb_id);
-
 	munmap(bo->vaddr, bo->size);
-
 	destroy.handle = bo->handle;
 	drmIoctl(fd, DRM_IOCTL_MODE_DESTROY_DUMB, &destroy);
 }
 
+static uint32_t get_property(int fd, drmModeObjectProperties *props)
+{
+	drmModePropertyPtr property;
+	uint32_t i, id = 0;
+
+	for (i = 0; i < props->count_props; i++) {
+		property = drmModeGetProperty(fd, props->props[i]);
+		printf("\"%s\"\t\t---",property->name);
+		printf("id = %d , value=%ld\n",props->props[i],props->prop_values[i]);
+	}
+    return 0;
+}
 
 static uint32_t get_property_id(int fd, drmModeObjectProperties *props,
 				const char *name)
 {
 	drmModePropertyPtr property;
 	uint32_t i, id = 0;
+
 
 	/* find property according to the name */
 	for (i = 0; i < props->count_props; i++) {
@@ -109,10 +128,7 @@ static uint32_t get_property_id(int fd, drmModeObjectProperties *props,
 
 int drm_init()
 {
-	uint32_t blob_id;
-	uint32_t property_crtc_id;
-	uint32_t property_mode_id;
-	uint32_t property_active;
+	int i;
 
 	drmModeObjectProperties *props;
 	drmModeAtomicReq *req;
@@ -125,36 +141,44 @@ int drm_init()
 
 	drmSetClientCap(fd, DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1);
 	plane_res = drmModeGetPlaneResources(fd);
-	plane_id = plane_res->planes[0];
+	for(i=0;i<3;i++){
+		plane_id[i] = plane_res->planes[i];
+		printf("planes[%d]= %d\n",i,plane_id[i]);
+	}
 
 	conn = drmModeGetConnector(fd, conn_id);
 	buf.width = conn->modes[0].hdisplay;
 	buf.height = conn->modes[0].vdisplay;
-
 	drm_create_fb(&buf);
 
 	drmSetClientCap(fd, DRM_CLIENT_CAP_ATOMIC, 1);
 
 	/* get connector properties */
 	props = drmModeObjectGetProperties(fd, conn_id,	DRM_MODE_OBJECT_CONNECTOR);
-	property_crtc_id = get_property_id(fd, props, "CRTC_ID");
+	printf("/-----conn_Property-----/\n");
+	get_property(fd, props);
+	printf("\n");
+	pc.property_crtc_id = get_property_id(fd, props, "CRTC_ID");
 	drmModeFreeObjectProperties(props);
 
 	/* get crtc properties */
 	props = drmModeObjectGetProperties(fd, crtc_id, DRM_MODE_OBJECT_CRTC);
-	property_active = get_property_id(fd, props, "ACTIVE");
-	property_mode_id = get_property_id(fd, props, "MODE_ID");
+	printf("/-----CRTC_Property-----/\n");
+	get_property(fd, props);
+	printf("\n");
+	pc.property_active = get_property_id(fd, props, "ACTIVE");
+	pc.property_mode_id = get_property_id(fd, props, "MODE_ID");
 	drmModeFreeObjectProperties(props);
 
 	/* create blob to store current mode, and retun the blob id */
 	drmModeCreatePropertyBlob(fd, &conn->modes[0],
-				sizeof(conn->modes[0]), &blob_id);
+				sizeof(conn->modes[0]), &pc.blob_id);
 
 	/* start modeseting */
 	req = drmModeAtomicAlloc();
-	drmModeAtomicAddProperty(req, crtc_id, property_active, 1);
-	drmModeAtomicAddProperty(req, crtc_id, property_mode_id, blob_id);
-	drmModeAtomicAddProperty(req, conn_id, property_crtc_id, crtc_id);
+	drmModeAtomicAddProperty(req, crtc_id, pc.property_active, 1);
+	drmModeAtomicAddProperty(req, crtc_id, pc.property_mode_id, pc.blob_id);
+	drmModeAtomicAddProperty(req, conn_id, pc.property_crtc_id, crtc_id);
 	drmModeAtomicCommit(fd, req, DRM_MODE_ATOMIC_ALLOW_MODESET, NULL);
 	drmModeAtomicFree(req);
 }
@@ -168,20 +192,36 @@ int drm_exit()
 	close(fd);
 }
 
-
-
 int main(int argc, char **argv)
 {
+	int i,j;
 	drm_init();
-	printf("drmModeAtomicCommit SetCrtc\n");
+	//显示三色
+	for(j=0;j<3;j++){
+		for(i =j*buf.width*buf.height/3;i< (j+1)*buf.width*buf.height/3;i++)
+			buf.vaddr[i] = color_table[j];
+	}
+	//1：1设置屏幕，没有该函数不会显示画面
+	drmModeSetPlane(fd, plane_id[0], crtc_id, buf.fb_id, 0,
+			0, 0, 720, 1280,
+			0 << 16, 0 << 16, 720 << 16, 1280 << 16);
+
+	getchar();
+	//将framebuffer截取部分放到图层一上，
+	//此时屏幕改变，将320x800的framebuffer区域拉伸到720x1280中
+	drmModeSetPlane(fd, plane_id[0], crtc_id, buf.fb_id, 0,
+			0, 0, 720, 1280,
+			0 << 16, 0 << 16, 320 << 16, 800 << 16);
+
+	getchar();
+	//将framebuffer区域缩放一倍放到图层二上，把图层二的位置放到屏幕的(360,640)
+	//叠加在图层一上，可以看到图层二覆盖了图层一的部分区域
+	drmModeSetPlane(fd, plane_id[1], crtc_id, buf.fb_id, 0,
+			180, 640, 360, 640,
+			0 << 16, 0 << 16, 720 << 16, 1280 << 16);
+
 	getchar();
 
-	drmModeSetPlane(fd, plane_id, crtc_id, buf.fb_id, 0,
-			50, 50, 320, 320,
-			0, 0, 320 << 16, 320 << 16);
-
-	printf("drmModeSetPlane\n");
-	getchar();
 	drm_exit();	
 
 	return 0;
