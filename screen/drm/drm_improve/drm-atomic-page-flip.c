@@ -66,6 +66,9 @@ drmModeConnector *conn;	//connetor相关的结构体
 drmModeRes *res;		//资源
 drmModePlaneRes *plane_res;
 
+drmEventContext ev;
+int count;
+
 int fd;					//文件描述符
 uint32_t conn_id;
 uint32_t crtc_id;
@@ -82,12 +85,13 @@ uint32_t color_table[6] = {RED,GREEN,BLUE,RED,GREEN,BLUE};
 struct drm_device buf;
 struct property_crtc pc;
 struct property_planes pp[3];
+struct planes_setting ps5;
 
 static int drm_create_fb(struct drm_device *bo)
 {
 	/* create a dumb-buffer, the pixel format is XRGB888 */
 	bo->create.width = bo->width;
-	bo->create.height = bo->height;
+	bo->create.height = bo->height*2;
 	bo->create.bpp = 32;
 
 	/* handle, pitch, size will be returned */
@@ -97,7 +101,7 @@ static int drm_create_fb(struct drm_device *bo)
 	bo->pitch = bo->create.pitch;
 	bo->size = bo->create.size;
 	bo->handle = bo->create.handle;
-	drmModeAddFB(fd, bo->width, bo->height, 24, 32, bo->pitch,
+	drmModeAddFB(fd, bo->width, bo->height*2, 24, 32, bo->pitch,
 			   bo->handle, &bo->fb_id);
 	
 	//每行占用字节数，共占用字节数，MAP_DUMB的句柄
@@ -223,6 +227,19 @@ static uint32_t drm_set_plane(int fd,struct planes_setting *ps)
 }
 
 
+static uint32_t drm_set_crtc(void)
+{
+	drmModeAtomicReq *req;
+	req = drmModeAtomicAlloc();
+	drmModeAtomicAddProperty(req, crtc_id, pc.property_active, 1);
+	drmModeAtomicAddProperty(req, crtc_id, pc.property_mode_id, pc.blob_id);
+	drmModeAtomicAddProperty(req, conn_id, pc.property_crtc_id, crtc_id);
+	drmModeAtomicCommit(fd, req, DRM_MODE_ATOMIC_ALLOW_MODESET|DRM_MODE_PAGE_FLIP_EVENT, NULL);
+	drmModeAtomicFree(req);
+	return 0;
+}
+
+
 int drm_init()
 {
 	int i;
@@ -272,14 +289,8 @@ int drm_init()
 				sizeof(conn->modes[0]), &pc.blob_id);
 
 	/* start modeseting */
-	req = drmModeAtomicAlloc();
-	drmModeAtomicAddProperty(req, crtc_id, pc.property_active, 1);
-	drmModeAtomicAddProperty(req, crtc_id, pc.property_mode_id, pc.blob_id);
-	drmModeAtomicAddProperty(req, conn_id, pc.property_crtc_id, crtc_id);
-	drmModeAtomicCommit(fd, req, DRM_MODE_ATOMIC_ALLOW_MODESET, NULL);
-	drmModeAtomicFree(req);
+	drm_set_crtc();
 }
-
 int drm_exit()
 {
 	drm_destroy_fb(&buf);
@@ -289,23 +300,44 @@ int drm_exit()
 	close(fd);
 }
 
+
+static void drm_page_flip_handler(int fd, uint32_t frame,
+				    uint32_t sec, uint32_t usec,
+				    void *data)
+{
+	drmModeAtomicReq *req;
+	//切换显示
+    if(count==0)
+		count=1;
+	else if(count==1)
+		count=0;
+    //设置偏移量
+	if(count==1)
+		ps5.src_y = 1280;
+	else 
+		ps5.src_y = 0;
+	drm_set_plane(fd,&ps5);
+	drm_set_crtc();
+}
+
+
 int main(int argc, char **argv)
 {
 	int i,j;
 	drmModeAtomicReq *req;
-	struct planes_setting ps5;
+	ev.version = DRM_EVENT_CONTEXT_VERSION;
+	ev.page_flip_handler = drm_page_flip_handler;
 
 	drm_init();
-    drm_get_plane_property_id(fd,plane_id[0]);
+	drm_get_plane_property_id(fd,plane_id[0]);
 	drm_get_plane_property_id(fd,plane_id[1]);
-	//显示三色
-	for(j=0;j<3;j++){
-		for(i =j*buf.width*buf.height/3;i< (j+1)*buf.width*buf.height/3;i++)
-			buf.vaddr[i] = color_table[j];
-	}
-	//1：1设置屏幕，没有该函数不会显示画面
 
-	
+	for(i =0;i< buf.width*buf.height;i++)
+		buf.vaddr[i] = RED;
+
+	for(i =buf.width*buf.height;i< buf.width*buf.height*2;i++)
+		buf.vaddr[i] = BLUE;
+
 	ps5.plane_id = plane_id[0];
 	ps5.fb_id = buf.fb_id;
 	ps5.crtc_x = 0;
@@ -319,30 +351,10 @@ int main(int argc, char **argv)
 	drm_set_plane(fd,&ps5);
 
 	getchar();
-	//将framebuffer截取部分放到图层一上，
-	//此时屏幕改变，将320x800的framebuffer区域拉伸到720x1280中
-	ps5.src_w = 320;
-	ps5.src_h = 800;
-	drm_set_plane(fd,&ps5);
-
+	drmHandleEvent(fd, &ev);
 	getchar();
-	//将framebuffer区域缩放一倍放到图层二上，把图层二的位置放到屏幕的(360,640)
-	//叠加在图层一上，可以看到图层二覆盖了图层一的部分区域
-	ps5.plane_id = plane_id[1];
-	ps5.fb_id = buf.fb_id;
-	ps5.crtc_x = 180;
-	ps5.crtc_y = 640;
-	ps5.crtc_w = 360;
-	ps5.crtc_h = 640;
-	ps5.src_x = 0;
-	ps5.src_y = 0;
-	ps5.src_w = 720;
-	ps5.src_h = 1280;
-	drm_set_plane(fd,&ps5);
-	//the price of PS5 is rising,no money to pay,damn it!!!
-	//wait!mine car is going to become cheap,PC games i'm comming!!
+	drmHandleEvent(fd, &ev);
 	getchar();
-
 	drm_exit();	
 
 	return 0;

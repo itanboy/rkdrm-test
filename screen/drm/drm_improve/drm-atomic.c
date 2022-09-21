@@ -169,7 +169,7 @@ int drm_init()
 	drmModeAtomicAddProperty(da.req, crtc_id, da.property_active, 1);
 	drmModeAtomicAddProperty(da.req, crtc_id, da.property_mode_id, da.blob_id);
 	drmModeAtomicAddProperty(da.req, conn_id, da.property_crtc_id, crtc_id);
-	drmModeAtomicCommit(fd, da.req, DRM_MODE_ATOMIC_ALLOW_MODESET, NULL);
+	drmModeAtomicCommit(fd, da.req, DRM_MODE_ATOMIC_ALLOW_MODESET|DRM_MODE_PAGE_FLIP_EVENT, NULL);
 	drmModeAtomicFree(da.req);
 }
 
