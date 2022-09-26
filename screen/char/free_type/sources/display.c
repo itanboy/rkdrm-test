@@ -1,6 +1,5 @@
 #include "drm-core.h"
 #include <ft2build.h>
-#include <wchar.h>
 #include <math.h>
 #include FT_FREETYPE_H
 #include FT_GLYPH_H
@@ -9,99 +8,22 @@ int fd_hzk16;
 struct stat hzk_stat;
 unsigned char *hzkmem;
 
-struct file_string {
-	int fd;
-	uint8_t *mem;
-	uint8_t utf_8[100];
-	uint16_t unicode[75];
-	uint32_t len;
-	uint64_t file_size;
-	struct stat stat;
-};
-
-struct file_string f_name;
-struct file_string f_str[2];
-
 uint32_t color_table[6] = {RED,GREEN,BLUE,BLACK,WHITE,BLACK_BLUE};
 
 //显示像素点
 void show_pixel(uint32_t x , uint32_t y , uint32_t color)
 {
-	if(x > buf.width || y > buf.height){
+	if(x > buf.width || y > buf.height)
 		printf("wrong set\n");
-	}
-
 	buf.vaddr[ y*buf.width + x] = color;
 }
-
-//显示单个ascii编码的8X8字符
-void show_8x16(uint32_t x , uint32_t y , uint32_t color, unsigned char num)
-{
-	int i,j;
-	unsigned char dot;
-	for(i = 0 ; i<16 ; i++){
-		dot = fontdata_8x16[num*16+i];
-		for(j=0;j<8;j++){
-			if(dot & 0x80)
-				show_pixel(x+j,y+i,color);
-			else
-				show_pixel(x+j,y+i,BLACK);
-			dot = dot << 1;
-		}
-	}
-}
-//显示全部ascii编码的8X8字符
-void show_string(uint32_t color)
-{
-	int i,j;
-	int row=64;
-	int x_offset = (buf.width - 64*8)/2;
-	int y_offset = (buf.height - 16*4)/2;
-	for(j=0;j<4;j++){
-		for(i=0;i<64;i++){
-			show_8x16(i*8+x_offset,16*j+y_offset,color,i+j*64);
-		}
-	}
-}
-
-//单个utf_8的字符转换为unicode
-int utf_8_to_unicode_word(uint8_t *utf_8,uint16_t *word)
-{
-	uint8_t unicode[2];
-	//1位
-	if(utf_8[0]<0x80){
-		unicode[0] = 0;
-		unicode[1] = utf_8[0];
-		
-		return 1;
-	}
-	//2位
-	else if(utf_8[0] > 0xc0 & utf_8[0] <0xe0){
-		unicode[1] = (utf_8[1]&0x3f) | ((utf_8[0]<< 6)& 0xc0 );
-		unicode[0] = ((utf_8[0]>>2) & 0x07) ;
-		return 2;
-	}
-	//3位
-	else if(utf_8[0] > 0xe0 & utf_8[0]<0xf0){
-		unicode[1] = (utf_8[2]&0x3f) | ((utf_8[1] << 6)& 0xc0);
-		unicode[0] = ((utf_8[1]>>2)&0x0f) | ((utf_8[0] <<4)& 0xf0) ;
-		return 3;
-	}
-	//4位不支持
-	else
-		printf("only tran 2 bytes unicode\n");
-
-}
-
 
 int utf_8_to_unicode_string(uint8_t *utf_8,uint16_t *word)
 {
 	int len = 0;
 	int utf_8_size = strlen(utf_8);
 	int utf_8_len = 0;
-	uint8_t unicode[2];
-
-	printf("size=%d\n",utf_8_size);
+	uint16_t unicode[2];
 
 	while(utf_8_size > 0){
 		//1位utf_8转换为两位的unicode
@@ -136,34 +58,10 @@ int utf_8_to_unicode_string(uint8_t *utf_8,uint16_t *word)
 		}
 		//四位的utf_8转换需要三到四位的unicode码，这样不方便操作，
 		//中文基本都可以用三位utf_8表示，因此,四位及以后的解码就没必要
-		else{
+		else
 			return -1;
-		}
 	}
-	printf("len = %d\n",len);
 	return len;
-}
-
-//用于HZK16的显示
-void show_chinese(int x, int y, unsigned char *str)
-{
-	unsigned int area  = str[0] - 0xA1;
-	unsigned int where = str[1] - 0xA1;
-	unsigned char *dots = hzkmem + (area * 94 + where)*32;
-	unsigned char byte;
-
-	int i, j, b;
-	for (i = 0; i < 16; i++){
-		for (j = 0; j < 2; j++){
-			byte = dots[i*2 + j];
-			for (b = 7; b >=0; b--){
-				if (byte & (1<<b))
-					show_pixel(x+j*8+7-b, y+i, WHITE);
-				else
-					show_pixel(x+j*8+7-b, y+i, BLACK_BLUE); 
-			}
-		}
-	}
 }
 
 void draw_bitmap( FT_Bitmap* bitmap,FT_Int x_pen,FT_Int y_pen)
@@ -181,8 +79,7 @@ void draw_bitmap( FT_Bitmap* bitmap,FT_Int x_pen,FT_Int y_pen)
 
 	for ( y = y_pen, y_count = 0; y < y_max; y++, y_count++ ){
 		for ( x = x_pen, x_count = 0; x < x_max; x++, x_count++ ){
-			if ( x < 0      || y < 0       ||
-				x >= buf.width || y >= buf.height )
+			if ( x < 0 || y < 0 || x >= buf.width || y >= buf.height )
 			continue;
 			//buf里的图像是存放八位的梯度值，需要自己转换成颜色才能显示，否则会表现蓝色
 			show = buffer[y_count * bitmap->width + x_count];
@@ -195,112 +92,79 @@ void draw_bitmap( FT_Bitmap* bitmap,FT_Int x_pen,FT_Int y_pen)
 			//像素显示函数
 			show_pixel(x, y , color);
 		}
-
 	}
 }
 
 
-int display_string(FT_Face face, uint16_t *str,int len, int lcd_x, int lcd_y)
+int freetype_set_char(FT_Face face , int lcd_x,int lcd_y ,int font_size,int angle_degree,uint16_t word)
 {
-    int i;
-    int error;
-    FT_BBox bbox;
-    FT_Vector pen;
-    FT_Glyph  glyph;
-    FT_GlyphSlot slot = face->glyph;
 	FT_Matrix	  matrix;
-	
-	int angle_degree = 0;
+	FT_Vector     pen;
+	int charIdx;
+	FT_GlyphSlot  slot= face->glyph;;
 	double angle;
+	int error;
 
-    /* 把LCD坐标转换为笛卡尔坐标 */
-    int x = lcd_x;
-    int y = buf.height - lcd_y;
-	//设置原点
-    pen.x = (x - 0) * 64; /* 单位: 1/64像素 */
-    pen.y = (y - 0) * 64; /* 单位: 1/64像素 */
-
-    /* 处理每个字符 */
-    for (i = 0; i < len; i++)
-    {
-        //设置旋转
-		angle = (1.0 * angle_degree/360) * 3.14159 * 2;
+	FT_Set_Pixel_Sizes(face, font_size, 0);
+	//设置旋转
+	angle = (1.0 * angle_degree/360) * 3.14159 * 2;
 		/* set up matrix */
-		matrix.xx = (FT_Fixed)( cos( angle ) * 0x10000L );
-		matrix.xy = (FT_Fixed)(-sin( angle ) * 0x10000L );
-		matrix.yx = (FT_Fixed)( sin( angle ) * 0x10000L );
-		matrix.yy = (FT_Fixed)( cos( angle ) * 0x10000L );
+	matrix.xx = (FT_Fixed)( cos( angle ) * 0x10000L );
+	matrix.xy = (FT_Fixed)(-sin( angle ) * 0x10000L );
+	matrix.yx = (FT_Fixed)( sin( angle ) * 0x10000L );
+	matrix.yy = (FT_Fixed)( cos( angle ) * 0x10000L );
 		
-		/* 转换：transformation */
-        FT_Set_Transform(face, &matrix, &pen);
+	/* 转换：transformation */
+    FT_Set_Transform(face, &matrix, 0);
 
-        /* 加载位图: load glyph image into the slot (erase previous one) */
-        error = FT_Load_Char(face, str[i], FT_LOAD_DEFAULT|FT_LOAD_RENDER);
+	/*下列的三条可替换FT_Load_Char使用*/
+	// charIdx = FT_Get_Char_Index(face,word);
+	// FT_Load_Glyph(face,charIdx, FT_LOAD_DEFAULT); 
+	// FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL);
 
-        /* 显示内容 */
-        draw_bitmap( &slot->bitmap,slot->bitmap_left,
-                        buf.height - slot->bitmap_top);
+	error = FT_Load_Char( face, word, FT_LOAD_RENDER );
+	if (error){
+		printf("FT_Load_Char error\n");
+		return -1;
+	}
 
-        /* 计算下一个字符的原点: increment pen position */
-        pen.x += slot->advance.x;
-        pen.y += slot->advance.y;
-    }
+	draw_bitmap( &slot->bitmap,lcd_x,lcd_y);
 
-    return 0;
+	return 0;
 }
-
 
 int main(int argc, char **argv)
 {
-	FT_Library    library;
-    FT_Face       face;
-    int i,error;
-	//字体大小
-    int font_size = 60;
+	int i,j,count;
+	FT_Library library;
+	FT_Face face;
+	int error;
+	int font_size = 180;
+	int font_size_english = 60;
+	int angle_degree = 0;
 
-	uint8_t str[] = "野火科技";
-	uint8_t str1[] = "www.embedfire.com";
-	uint16_t unicode[10];
-	uint16_t unicode1[10];
-	uint32_t u_len;
-	uint32_t u1_len;
-	
-	//清空内容
-	memset(f_name.unicode,0,sizeof(f_name.unicode));
-	memset(f_str[0].unicode,0,sizeof(f_str[0].unicode));
-	memset(f_str[1].unicode,0,sizeof(f_str[1].unicode));
+	unsigned char str1[] = "野火科技";
+	unsigned char str2[] = "www.embedfire.com";
+	uint16_t unicode[20];
+	int unicode_size = 0;
 
 	drm_init();
-	//打开文件，在linux中文件以utf-8编码的形式存在
-	f_name.fd = open("file/name.txt", O_RDONLY);
-	//获取文件大小
-	fstat(f_name.fd, &f_name.stat);
-	//将文件中的内容全部映射出来
-	f_name.mem = (unsigned char *)mmap(NULL , f_name.stat.st_size, PROT_READ, MAP_SHARED, f_name.fd, 0);
-	//utf_8转unicode
-	f_name.len=utf_8_to_unicode_string(f_name.mem,f_name.unicode);
-	//打印出转换后的unicode码
-	for(i = 0 ; i<f_name.len;i++)
-		printf("%x,",f_name.unicode[i]);
-	printf("\n");
 
-	//传入一段utf-8的字符串，转译unicode码
-	u_len = utf_8_to_unicode_string(str,unicode);
-	u1_len = utf_8_to_unicode_string(str1,unicode1);
-
-	//初始化freetype
-	error = FT_Init_FreeType( &library );
-	//读取文字文件，创建face
-	error = FT_New_Face( library, "file/simsun.ttc", 0, &face ); 
-	//设置字体大小
-	FT_Set_Pixel_Sizes(face, font_size, 0);
+	/* 显示矢量字体 */
+	error = FT_Init_FreeType( &library );			   /* initialize library */
+	/* error handling omitted */
+	error = FT_New_Face( library, "file/simsun.ttc", 0, &face ); /* create face object */
+	unicode_size = utf_8_to_unicode_string(str1,unicode);
 	//显示野火科技
-	display_string(face, unicode,u_len, 240, 1140);
+	for(i = 0 ; i<unicode_size;i++){
+		freetype_set_char(face,0+font_size*i,0,font_size,angle_degree,unicode[i] );
+		usleep(500000);
+	}
 	//显示官网
-	display_string(face, unicode1,u1_len ,100, 1200);
-	//显示欢迎来到野火科技
-	display_string(face, f_name.unicode, f_name.len,120, 640);
-	//得到字体结束
+	unicode_size = utf_8_to_unicode_string(str2,unicode);
+	for(i = 0 ; i<unicode_size;i++){
+		freetype_set_char(face,0+font_size/6*i,font_size,font_size/3,angle_degree,unicode[i] );
+	}
 	getchar();
 	drm_exit();	
 

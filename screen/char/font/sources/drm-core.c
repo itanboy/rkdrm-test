@@ -203,9 +203,9 @@ int drm_init()
     drm_get_plane_property_id(fd,plane_id[0]);
 	drm_get_plane_property_id(fd,plane_id[1]);
 
-	//显示三色
+	//清屏
 	for(i = 0;i< buf.width*buf.height;i++)
-		buf.vaddr[i] = 0x123456;
+		buf.vaddr[i] = BLACK;
 
 	//1：1设置屏幕，没有该函数不会显示画面
 	ps5.plane_id = plane_id[0];

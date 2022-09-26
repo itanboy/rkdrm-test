@@ -32,37 +32,6 @@ void show_pixel(uint32_t x , uint32_t y , uint32_t color)
 	buf.vaddr[ y*buf.width + x] = color;
 }
 
-//单个utf_8的字符转换为unicode
-int utf_8_to_unicode_word(uint8_t *utf_8,uint16_t word)
-{
-	uint8_t unicode[2];
-	//1位
-	if(utf_8[0]<0x80){
-		unicode[0] = 0;
-		unicode[1] = utf_8[0];
-		word = (unicode[0]<<8) | unicode[1];
-		return 1;
-	}
-	//2位
-	else if(utf_8[0] > 0xc0 & utf_8[0] <0xe0){
-		unicode[1] = (utf_8[1]&0x3f) | ((utf_8[0]<< 6)& 0xc0 );
-		unicode[0] = ((utf_8[0]>>2) & 0x07) ;
-		word = (unicode[0]<<8) | unicode[1];
-		return 2;
-	}
-	//3位
-	else if(utf_8[0] > 0xe0 & utf_8[0]<0xf0){
-		unicode[1] = (utf_8[2]&0x3f) | ((utf_8[1] << 6)& 0xc0);
-		unicode[0] = ((utf_8[1]>>2)&0x0f) | ((utf_8[0] <<4)& 0xf0) ;
-		word = (unicode[0]<<8) | unicode[1];
-		return 3;
-	}
-	//4位不支持
-	else
-		printf("only tran 2 bytes unicode\n");
-}
-
-
 int utf_8_to_unicode_string(uint8_t *utf_8,uint16_t *word)
 {
 	int len = 0;

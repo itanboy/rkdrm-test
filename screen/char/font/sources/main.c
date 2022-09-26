@@ -44,9 +44,15 @@ void show_string(uint32_t color)
 
 int main(int argc, char **argv)
 {
-	int i,j;
+	int i;
+	//初始化屏幕
 	drm_init();
+	//屏幕颜色变化---浅蓝
+	for(i = 0;i< buf.width*buf.height;i++)
+		buf.vaddr[i] = BLACK_BLUE;
+	//屏幕中间显示字体
 	show_string(WHITE);
+	//获取字符--enter键进入下一步
     getchar();
 	drm_exit();	
 
