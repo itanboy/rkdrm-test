@@ -5,5 +5,4 @@
 
 extern const unsigned char fontdata_8x16[FONTDATAMAX];
 
-
 #endif

@@ -15,6 +15,13 @@
 #include <xf86drm.h>
 #include <xf86drmMode.h>
 
+#define RED         0XFF0000
+#define GREEN       0X00FF00
+#define BLUE        0X0000FF
+#define BLACK       0X000000
+#define WHITE       0XFFFFFF
+#define BLACK_BLUE  0X123456
+
 struct drm_device {
 	uint32_t width;			//显示器的宽的像素点数量
 	uint32_t height;		//显示器的高的像素点数量
@@ -65,25 +72,18 @@ struct planes_setting {
 };
 
 
-drmModeConnector *conn;	//connetor相关的结构体
-drmModeRes *res;		//资源
-drmModePlaneRes *plane_res;
+extern drmModeConnector *conn;	//connetor相关的结构体
+extern drmModeRes *res;		//资源
+extern drmModePlaneRes *plane_res;
 
-int fd;					//文件描述符
-uint32_t conn_id;
-uint32_t crtc_id;
-uint32_t plane_id[3];
+extern int fd;					//文件描述符
+extern uint32_t conn_id;
+extern uint32_t crtc_id;
+extern uint32_t plane_id[3];
 
-#define RED         0XFF0000
-#define GREEN       0X00FF00
-#define BLUE        0X0000FF
-#define BLACK       0X000000
-#define WHITE       0XFFFFFF
-#define BLACK_BLUE  0X123456
-
-struct drm_device buf;
-struct property_crtc pc;
-struct property_planes pp[3];
+extern struct drm_device buf;
+extern struct property_crtc pc;
+extern struct property_planes pp[3];
 
 static int drm_create_fb(struct drm_device *bo);
 static void drm_destroy_fb(struct drm_device *bo);

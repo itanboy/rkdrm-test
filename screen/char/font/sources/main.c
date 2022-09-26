@@ -1,5 +1,5 @@
 #include "drm-core.h"
-
+#include "font.h"
 uint32_t color_table[6] = {RED,GREEN,BLUE,BLACK,WHITE,BLACK_BLUE};
 
 //描点函数
@@ -58,3 +58,4 @@ int main(int argc, char **argv)
 
 	return 0;
 }
+

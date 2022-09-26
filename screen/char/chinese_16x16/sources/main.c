@@ -1,4 +1,5 @@
 #include "drm-core.h"
+#include "font.h"
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include FT_GLYPH_H
@@ -79,6 +80,9 @@ int main(int argc, char **argv)
 	unsigned char *web = "www.embedfire.com";
 	//初始化
 	drm_init();
+	//屏幕颜色变化---浅蓝
+	for(i = 0;i< buf.width*buf.height;i++)
+		buf.vaddr[i] = BLACK_BLUE;
 	//打开汉字库
 	fd_hzk16 = open("file/HZK16", O_RDONLY);
 	if (fd_hzk16 < 0){

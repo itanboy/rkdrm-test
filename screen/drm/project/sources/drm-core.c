@@ -1,5 +1,17 @@
 #include "drm-core.h"
 
+drmModeConnector *conn;	//connetor相关的结构体
+drmModeRes *res;		//资源
+drmModePlaneRes *plane_res;
+
+int fd;					//文件描述符
+uint32_t conn_id;
+uint32_t crtc_id;
+uint32_t plane_id[3];
+
+struct drm_device buf;
+struct property_crtc pc;
+struct property_planes pp[3];
 
 static int drm_create_fb(struct drm_device *bo)
 {

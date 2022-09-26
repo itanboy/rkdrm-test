@@ -1,5 +1,16 @@
 #include "drm-core.h"
+drmModeConnector *conn;	//connetor相关的结构体
+drmModeRes *res;		//资源
+drmModePlaneRes *plane_res;
 
+int fd;					//文件描述符
+uint32_t conn_id;
+uint32_t crtc_id;
+uint32_t plane_id[3];
+
+struct drm_device buf;
+struct property_crtc pc;
+struct property_planes pp[3];
 
 static int drm_create_fb(struct drm_device *bo)
 {
@@ -203,7 +214,7 @@ int drm_init()
     drm_get_plane_property_id(fd,plane_id[0]);
 	drm_get_plane_property_id(fd,plane_id[1]);
 
-	//显示三色
+	//清屏
 	for(i = 0;i< buf.width*buf.height;i++)
 		buf.vaddr[i] = BLACK;
 
