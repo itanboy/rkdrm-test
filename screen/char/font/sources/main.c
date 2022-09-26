@@ -12,6 +12,7 @@ void show_pixel(uint32_t x , uint32_t y , uint32_t color)
 	buf.vaddr[ y*buf.width + x] = color;
 }
 
+
 //单个8x16字符的描写
 void show_8x16(uint32_t x , uint32_t y , uint32_t color, unsigned char num)
 {
