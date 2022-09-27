@@ -102,15 +102,92 @@ void draw_bitmap( FT_Bitmap* bitmap,FT_Int x_pen,FT_Int y_pen)
 				color = (show&0xff)|((show&0xff)<<8)|((show&0xff)<<16);
 			//直接为黑色，可以省略
 			else
-				color=0;
+				color=RED;
 			//像素显示函数
 			show_pixel(x, y , color);
 		}
 	}
+
+	printf("width = %d\n",bitmap->width);
+	printf("rows = %d\n",bitmap->rows);
+}
+
+int compute_string_bbox(FT_Face       face,uint16_t *str,int len, FT_BBox  *abbox)
+{
+    int i;
+    int error;
+    FT_BBox bbox;
+    FT_BBox glyph_bbox;
+    FT_Vector pen;
+    FT_Glyph  glyph;
+    FT_GlyphSlot slot = face->glyph;
+
+    /* 初始化 */
+    bbox.xMin = bbox.yMin = 32000;
+    bbox.xMax = bbox.yMax = -32000;
+
+    /* 指定原点为(0, 0) */
+    pen.x = 0;
+    pen.y = 0;
+
+    /* 计算每个字符的bounding box */
+    /* 先translate, 再load char, 就可以得到它的外框了 */
+    for (i = 0; i < len; i++)
+    {
+        /* 转换：transformation */
+        FT_Set_Transform(face, 0, &pen);
+
+        /* 加载位图: load glyph image into the slot (erase previous one) */
+        error = FT_Load_Char(face, str[i], FT_LOAD_RENDER);
+        if (error)
+        {
+            printf("FT_Load_Char error\n");
+            return -1;
+        }
+
+        /* 取出glyph */
+        error = FT_Get_Glyph(face->glyph, &glyph);
+        if (error)
+        {
+            printf("FT_Get_Glyph error!\n");
+            return -1;
+        }
+        
+        /* 从glyph得到外框: bbox */
+        FT_Glyph_Get_CBox(glyph, FT_GLYPH_BBOX_TRUNCATE, &glyph_bbox);
+
+        /* 更新外框 */
+        if ( glyph_bbox.xMin < bbox.xMin )
+            bbox.xMin = glyph_bbox.xMin;
+
+        if ( glyph_bbox.yMin < bbox.yMin )
+            bbox.yMin = glyph_bbox.yMin;
+
+        if ( glyph_bbox.xMax > bbox.xMax )
+            bbox.xMax = glyph_bbox.xMax;
+
+        if ( glyph_bbox.yMax > bbox.yMax )
+            bbox.yMax = glyph_bbox.yMax;
+        
+
+		printf("xMin=%ld,xmax=%ld\n ",glyph_bbox.xMin,glyph_bbox.xMax);
+		printf("bbox.xMin=%ld,bbox.xmax=%ld\n ",bbox.xMin,bbox.xMax);
+		printf("yMin=%ld,yMax=%ld\n ",glyph_bbox.yMin,glyph_bbox.yMax);
+		printf("bbox.yMin=%ld,bbox.yMax=%ld\n ",bbox.yMin,bbox.yMax);
+		printf("\n");
+        /* 计算下一个字符的原点: increment pen position */
+        pen.x += slot->advance.x;
+        pen.y += slot->advance.y;
+    }
+
+    /* return string bbox */
+    *abbox = bbox;
 }
 
 
-int display_string(FT_Face face, uint16_t *str,int len, int lcd_x, int lcd_y)
+
+
+int display_string(FT_Face face, uint16_t *str,int len, int lcd_x, int lcd_y,int xmin,int ymax)
 {
     int i;
     int error;
@@ -127,8 +204,8 @@ int display_string(FT_Face face, uint16_t *str,int len, int lcd_x, int lcd_y)
     int x = lcd_x;
     int y = buf.height - lcd_y;
 	//设置原点
-    pen.x = (x - 0) * 64; /* 单位: 1/64像素 */
-    pen.y = (y - 0) * 64; /* 单位: 1/64像素 */
+    pen.x = (x - xmin) * 64; /* 单位: 1/64像素 */
+    pen.y = (y - ymax) * 64; /* 单位: 1/64像素 */
 
     /* 处理每个字符 */
     for (i = 0; i < len; i++){
@@ -147,12 +224,20 @@ int display_string(FT_Face face, uint16_t *str,int len, int lcd_x, int lcd_y)
         error = FT_Load_Char(face, str[i], FT_LOAD_DEFAULT|FT_LOAD_RENDER);
 
         /* 显示内容 */
-        draw_bitmap( &slot->bitmap,slot->bitmap_left,
+        draw_bitmap(&slot->bitmap,slot->bitmap_left,
                         buf.height - slot->bitmap_top);
 
+		printf("bitmap_top = %d\n",slot->bitmap_top);
+		printf("bitmap_left = %d\n",slot->bitmap_left);
+
+		printf("pen.x = %ld\n",pen.x/64);
+		printf("pen.y = %ld\n",pen.y/64);
+		printf("advance.x = %ld\n",slot->advance.x/64);
+		
         /* 计算下一个字符的原点: increment pen position */
         pen.x += slot->advance.x;
-        pen.y += slot->advance.y;
+		// 竖向字体使用
+		// pen.y += slot->advance.y;
     }
 
     return 0;
@@ -163,11 +248,12 @@ int main(int argc, char **argv)
 {
 	FT_Library    library;
     FT_Face       face;
-    int i,error;
+	FT_BBox bbox;
+    int i,j,error;
 	//字体大小
-    int font_size = 60;
+    int font_size = 200;
 
-	uint8_t str[] = "野火科技";
+	uint8_t str[] = "野";
 	uint8_t str1[] = "www.embedfire.com";
 	uint16_t unicode[10];
 	uint16_t unicode1[10];
@@ -203,12 +289,23 @@ int main(int argc, char **argv)
 	error = FT_New_Face( library, "file/simsun.ttc", 0, &face ); 
 	//设置字体大小
 	FT_Set_Pixel_Sizes(face, font_size, 0);
-	//显示野火科技
-	display_string(face, unicode,u_len, 240, 1140);
-	//显示官网
-	display_string(face, unicode1,u1_len ,100, 1200);
-	//显示欢迎来到野火科技
-	display_string(face, f_name.unicode, f_name.len,120, 640);
+
+	compute_string_bbox(face, unicode,u_len,&bbox );
+	display_string(face, unicode,u_len, 100, 200,bbox.xMin,bbox.yMax);
+	for(i = 720*(1280-920);i< 720*(1280-919);i++)
+		buf.vaddr[i] = WHITE;
+	for(i = 0 ;i<1280;i++){
+		show_pixel(93,i,WHITE);
+	}
+	
+		sleep(1);
+	// display_string(face, unicode1,u1_len, 0, 640,0,0);
+	// //显示野火科技
+	// display_string(face, unicode,u_len, 240, 1140);
+	// //显示官网
+	// display_string(face, unicode1,u1_len ,100, 1200);
+	// //显示欢迎来到野火科技
+	// display_string(face, f_name.unicode, f_name.len,120, 640);
 	//得到字体结束
 	getchar();
 	drm_exit();	

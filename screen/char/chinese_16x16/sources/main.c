@@ -29,8 +29,6 @@ void show_8x16(uint32_t x , uint32_t y , uint32_t color, unsigned char num)
 		for(j=0;j<8;j++){
 			if(dot & 0x80)
 				show_pixel(x+j,y+i,color);
-			else
-				show_pixel(x+j,y+i,BLACK_BLUE);
 			dot = dot << 1;
 		}
 	}
@@ -74,7 +72,7 @@ void show_chinese(int x, int y, unsigned char *str)
 int main(int argc, char **argv)
 {
 	int i;
-	//野火科技
+	//野火科技 - GBK2312
 	unsigned char YHKJ[8] = {0XD2,0XB0,0XBB,0XF0,0XBF,0XC6,0XBC,0XBC};
 	//官网
 	unsigned char *web = "www.embedfire.com";

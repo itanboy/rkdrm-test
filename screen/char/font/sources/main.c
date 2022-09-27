@@ -23,12 +23,12 @@ void show_8x16(uint32_t x , uint32_t y , uint32_t color, unsigned char num)
 		for(j=0;j<8;j++){
 			if(dot & 0x80)
 				show_pixel(x+j,y+i,color);
-			else
-				show_pixel(x+j,y+i,BLACK_BLUE);
 			dot = dot << 1;
 		}
 	}
 }
+
+
 //256个ascii字符打印出来
 void show_string(uint32_t color)
 {
