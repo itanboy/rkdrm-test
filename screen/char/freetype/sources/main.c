@@ -125,7 +125,7 @@ int freetype_set_char(FT_Face face , int lcd_x,int lcd_y ,int font_size,int angl
 		printf("FT_Load_Char error\n");
 		return -1;
 	}
-	draw_bitmap( &slot->bitmap,lcd_x, lcd_y);
+	draw_bitmap( &slot->bitmap,lcd_x, lcd_y - slot->bitmap_top);
 	return 0;
 }
 
