@@ -23,8 +23,11 @@ static int drm_create_fb(struct drm_device *bo)
 	bo->create.bpp = 32;
 
 	/* handle, pitch, size will be returned */
-	drmIoctl(fd, DRM_IOCTL_MODE_CREATE_DUMB, &bo->create);
-
+	ret = drmIoctl(fd, DRM_IOCTL_MODE_CREATE_DUMB, &bo->create);
+	if(ret<0){
+		printf("DRM_IOCTL_MODE_CREATE_DUMB fail\n");
+		return ret;
+	}
 	/* bind the dumb-buffer to an FB object */
 	bo->pitch = bo->create.pitch;
 	bo->size = bo->create.size;
@@ -33,19 +36,23 @@ static int drm_create_fb(struct drm_device *bo)
 			   bo->handle, &bo->fb_id);
 	if(ret<0){
 		printf("drmModeAddFB fail\n");
-		return -1;
+		return ret;
 	}
 
 	/* map the dumb-buffer to userspace */
 	bo->map.handle = bo->create.handle;
-	drmIoctl(fd, DRM_IOCTL_MODE_MAP_DUMB, &bo->map);
+	ret = drmIoctl(fd, DRM_IOCTL_MODE_MAP_DUMB, &bo->map);
+	if(ret<0){
+		printf("DRM_IOCTL_MODE_MAP_DUMB fail\n");
+		return ret;
+	}
 
 	bo->vaddr = mmap(0, bo->create.size, PROT_READ | PROT_WRITE,
 			MAP_SHARED, fd, bo->map.offset);
 	if(bo->vaddr==NULL){
 		printf("mmap FB fail\n");
 		drm_destroy_fb(bo);
-		return -1;
+		return ret;
 	}
 
 	/* initialize the dumb-buffer with white-color */
@@ -80,7 +87,7 @@ static uint32_t get_property_id(int fd, drmModeObjectProperties *props,
 {
 	drmModePropertyPtr property;
 	uint32_t i, id = 0;
-	
+
 	/* find property according to the name */
 	for (i = 0; i < props->count_props; i++) {
 		property = drmModeGetProperty(fd, props->props[i]);
@@ -126,7 +133,7 @@ int drm_set_crtc(int fd)
 	ret = drmModeAtomicCommit(fd, req, DRM_MODE_ATOMIC_ALLOW_MODESET, NULL);
 	if(ret<0){
 		printf("plane AtomicCommit fail\n");
-		return -1;
+		return ret;
 	}
 	drmModeAtomicFree(req);
     return 0;
@@ -193,7 +200,7 @@ int drm_set_plane(int fd,struct planes_setting *ps)
 	ret = drmModeAtomicCommit(fd, req, 0, NULL);
 	if(ret<0){
 		printf("plane AtomicCommit fail\n");
-		return -1;
+		return ret;
 	}
 	drmModeAtomicFree(req);
     return 0;
@@ -211,6 +218,7 @@ int drm_init()
 	fd = open("/dev/dri/card0", O_RDWR | O_CLOEXEC);
 	if(fd < 0){
 		printf("can't open card0\n");
+		ret = fd;
 		goto fail;
 	}
 
@@ -274,7 +282,7 @@ fail1:
 	drmModeFreeResources(res);
 	close(fd);
 fail:
-	return -1;
+	return ret;
 }
 
 void drm_exit()

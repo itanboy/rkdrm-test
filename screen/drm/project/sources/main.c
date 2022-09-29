@@ -8,7 +8,7 @@ int main(int argc, char **argv)
 	int ret;
 	ret = drm_init();
 	if(ret < 0){
-		prinf("drm init fail\n");
+		printf("drm init fail\n");
 		return -1;
 	}
 	
