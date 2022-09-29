@@ -76,8 +76,13 @@ int main(int argc, char **argv)
 	unsigned char YHKJ[8] = {0XD2,0XB0,0XBB,0XF0,0XBF,0XC6,0XBC,0XBC};
 	//官网
 	unsigned char *web = "www.embedfire.com";
+	int ret;
 	//初始化
-	drm_init();
+	ret = drm_init();
+	if(ret < 0){
+		printf("drm init fail\n");
+		return -1;
+	}
 	//屏幕颜色变化---浅蓝
 	for(i = 0;i< buf.width*buf.height;i++)
 		buf.vaddr[i] = BLACK_BLUE;

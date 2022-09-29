@@ -91,9 +91,9 @@ static uint32_t get_property(int fd, drmModeObjectProperties *props);
 static uint32_t get_property_id(int fd, drmModeObjectProperties *props,
 				const char *name);
 uint32_t drm_get_plane_property_id(int fd,uint32_t plane_id);
-uint32_t drm_set_plane(int fd,struct planes_setting *ps);
+int drm_set_plane(int fd,struct planes_setting *ps);
 uint32_t drm_get_crtc_property_id(int fd);
-uint32_t drm_set_crtc(int fd);
+int drm_set_crtc(int fd);
 int drm_init();
-int drm_exit();
+void drm_exit();
 #endif

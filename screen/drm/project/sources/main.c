@@ -5,7 +5,12 @@ uint32_t color_table[6] = {RED,GREEN,BLUE,BLACK,WHITE,BLACK_BLUE};
 int main(int argc, char **argv)
 {
 	int i,j;
-	drm_init();
+	int ret;
+	ret = drm_init();
+	if(ret < 0){
+		prinf("drm init fail\n");
+		return -1;
+	}
 	
     getchar();
     for(j = 0; j< 6; j++){

@@ -46,8 +46,13 @@ void show_string(uint32_t color)
 int main(int argc, char **argv)
 {
 	int i;
-	//初始化屏幕
-	drm_init();
+	int ret;
+	//初始化
+	ret = drm_init();
+	if(ret < 0){
+		printf("drm init fail\n");
+		return -1;
+	}
 	//屏幕颜色变化---浅蓝
 	for(i = 0;i< buf.width*buf.height;i++)
 		buf.vaddr[i] = BLACK_BLUE;

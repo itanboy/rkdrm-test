@@ -145,7 +145,7 @@ int main(int argc, char **argv)
 {
 	int i,j;
 	int fd_bmp;
-	int err;
+	int ret;
 	struct bmpfile cbf;
 
 	if(argc <2 ){
@@ -153,7 +153,14 @@ int main(int argc, char **argv)
 		printf("Usage: %s xxx.bmp\n",argv[0]);
 		goto fail1;
 	}
-	drm_init();
+
+	//初始化
+	ret = drm_init();
+	if(ret < 0){
+		printf("drm init fail\n");
+		return -1;
+	}
+
 	fd_bmp = get_bmp_file(argv[1],&cbf);
 	if(fd_bmp < 0){
 		printf("something wrong in bmp file %d\n",fd_bmp);
@@ -161,8 +168,8 @@ int main(int argc, char **argv)
 	}
 
 	show_bmp_info(&cbf);
-	err = show_bmp(&cbf);
-	if(err < 0){
+	ret = show_bmp(&cbf);
+	if(ret < 0){
 		printf("show_bmp wrong!\n");
 		goto fail2;
 	}

@@ -232,13 +232,19 @@ int main(int argc, char **argv)
 	uint16_t unicode1[10];
 	uint32_t u_len;
 	uint32_t u1_len;
-
+	int ret;
 	//清空内容
 	memset(f_name.unicode,0,sizeof(f_name.unicode));
 	memset(f_str[0].unicode,0,sizeof(f_str[0].unicode));
 	memset(f_str[1].unicode,0,sizeof(f_str[1].unicode));
 
-	drm_init();
+
+	//初始化
+	ret = drm_init();
+	if(ret < 0){
+		printf("drm init fail\n");
+		return -1;
+	}
 	//打开文件，在linux中文件以utf-8编码的形式存在
 	f_name.fd = open("file/name.txt", O_RDONLY);
 	//获取文件大小

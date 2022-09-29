@@ -125,7 +125,7 @@ int freetype_set_char(FT_Face face , int lcd_x,int lcd_y ,int font_size,int angl
 		printf("FT_Load_Char error\n");
 		return -1;
 	}
-	draw_bitmap( &slot->bitmap,lcd_x, lcd_y - slot->bitmap_top);
+	draw_bitmap( &slot->bitmap,lcd_x, lcd_y );
 	return 0;
 }
 
@@ -144,7 +144,13 @@ int main(int argc, char **argv)
 	uint16_t unicode[20];
 	int unicode_size = 0;
 
-	drm_init();
+	int ret;
+	//初始化
+	ret = drm_init();
+	if(ret < 0){
+		printf("drm init fail\n");
+		return -1;
+	}
 
 	/* 显示矢量字体 */
 	error = FT_Init_FreeType( &library );			   /* initialize library */

@@ -15,6 +15,8 @@ struct property_planes pp[3];
 
 static int drm_create_fb(struct drm_device *bo)
 {
+	int ret;
+	
 	/* create a dumb-buffer, the pixel format is XRGB888 */
 	bo->create.width = bo->width;
 	bo->create.height = bo->height;
@@ -27,8 +29,12 @@ static int drm_create_fb(struct drm_device *bo)
 	bo->pitch = bo->create.pitch;
 	bo->size = bo->create.size;
 	bo->handle = bo->create.handle;
-	drmModeAddFB(fd, bo->width, bo->height, 24, 32, bo->pitch,
+	ret = drmModeAddFB(fd, bo->width, bo->height, 24, 32, bo->pitch,
 			   bo->handle, &bo->fb_id);
+	if(ret<0){
+		printf("drmModeAddFB fail\n");
+		return -1;
+	}
 
 	/* map the dumb-buffer to userspace */
 	bo->map.handle = bo->create.handle;
@@ -36,10 +42,14 @@ static int drm_create_fb(struct drm_device *bo)
 
 	bo->vaddr = mmap(0, bo->create.size, PROT_READ | PROT_WRITE,
 			MAP_SHARED, fd, bo->map.offset);
+	if(bo->vaddr==NULL){
+		printf("mmap FB fail\n");
+		drm_destroy_fb(bo);
+		return -1;
+	}
 
 	/* initialize the dumb-buffer with white-color */
 	memset(bo->vaddr, 0xff,bo->size);
-
 	return 0;
 }
 
@@ -70,8 +80,7 @@ static uint32_t get_property_id(int fd, drmModeObjectProperties *props,
 {
 	drmModePropertyPtr property;
 	uint32_t i, id = 0;
-
-
+	
 	/* find property according to the name */
 	for (i = 0; i < props->count_props; i++) {
 		property = drmModeGetProperty(fd, props->props[i]);
@@ -101,9 +110,9 @@ uint32_t drm_get_crtc_property_id(int fd)
     return 0;
 }
 
-uint32_t drm_set_crtc(int fd)
+int drm_set_crtc(int fd)
 {
-    
+    int ret;
     drmModeAtomicReq *req;
     /* create blob to store current mode, and retun the blob id */
 	drmModeCreatePropertyBlob(fd, &conn->modes[0],
@@ -114,7 +123,11 @@ uint32_t drm_set_crtc(int fd)
 	drmModeAtomicAddProperty(req, crtc_id, pc.property_active, 1);
 	drmModeAtomicAddProperty(req, crtc_id, pc.property_mode_id, pc.blob_id);
 	drmModeAtomicAddProperty(req, conn_id, pc.property_crtc_id, crtc_id);
-	drmModeAtomicCommit(fd, req, DRM_MODE_ATOMIC_ALLOW_MODESET, NULL);
+	ret = drmModeAtomicCommit(fd, req, DRM_MODE_ATOMIC_ALLOW_MODESET, NULL);
+	if(ret<0){
+		printf("plane AtomicCommit fail\n");
+		return -1;
+	}
 	drmModeAtomicFree(req);
     return 0;
 }
@@ -152,9 +165,10 @@ uint32_t drm_get_plane_property_id(int fd,uint32_t plane_id)
     return 0;
 }
 
-uint32_t drm_set_plane(int fd,struct planes_setting *ps)
+int drm_set_plane(int fd,struct planes_setting *ps)
 {
 	drmModeAtomicReq *req;
+	int ret;
 	int i;
 	int num;
 	uint32_t plane = ps->plane_id;
@@ -176,7 +190,11 @@ uint32_t drm_set_plane(int fd,struct planes_setting *ps)
 	drmModeAtomicAddProperty(req, ps->plane_id, pp[num].property_src_y,   ps->src_y << 16);
 	drmModeAtomicAddProperty(req, ps->plane_id, pp[num].property_src_w,   ps->src_w << 16);
 	drmModeAtomicAddProperty(req, ps->plane_id, pp[num].property_src_h,   ps->src_h << 16);
-	drmModeAtomicCommit(fd, req, 0, NULL);
+	ret = drmModeAtomicCommit(fd, req, 0, NULL);
+	if(ret<0){
+		printf("plane AtomicCommit fail\n");
+		return -1;
+	}
 	drmModeAtomicFree(req);
     return 0;
 }
@@ -185,12 +203,16 @@ uint32_t drm_set_plane(int fd,struct planes_setting *ps)
 int drm_init()
 {
 	int i;
-
+	int ret;
 	drmModeObjectProperties *props;
 	drmModeAtomicReq *req;
     struct planes_setting ps5;
 
 	fd = open("/dev/dri/card0", O_RDWR | O_CLOEXEC);
+	if(fd < 0){
+		printf("can't open card0\n");
+		goto fail;
+	}
 
 	res = drmModeGetResources(fd);
 	crtc_id = res->crtcs[0];
@@ -205,19 +227,26 @@ int drm_init()
 	conn = drmModeGetConnector(fd, conn_id);
 	buf.width = conn->modes[0].hdisplay;
 	buf.height = conn->modes[0].vdisplay;
-	drm_create_fb(&buf);
-
+	ret = drm_create_fb(&buf);
+	if(ret < 0){
+		printf("drm_create_fb fail\n");
+		goto fail1;
+	}
 	drmSetClientCap(fd, DRM_CLIENT_CAP_ATOMIC, 1);
 
     drm_get_crtc_property_id(fd);
-    drm_set_crtc(fd);
+    ret = drm_set_crtc(fd);
+	if(ret < 0){
+		printf("drm_set_crtc fail\n");
+		goto fail2;
+	}
 
     drm_get_plane_property_id(fd,plane_id[0]);
 	drm_get_plane_property_id(fd,plane_id[1]);
 
 	//显示三色
 	for(i = 0;i< buf.width*buf.height;i++)
-		buf.vaddr[i] = 0x123456;
+		buf.vaddr[i] = BLACK;
 
 	//1：1设置屏幕，没有该函数不会显示画面
 	ps5.plane_id = plane_id[0];
@@ -230,10 +259,25 @@ int drm_init()
 	ps5.src_y = 0;
 	ps5.src_w = 720;
 	ps5.src_h = 1280;
-	drm_set_plane(fd,&ps5);
+	ret = drm_set_plane(fd,&ps5);
+	if(ret < 0){
+		printf("drm_set_plane fail\n");
+		goto fail2;
+	}
+	return 0;
+
+fail2:
+	drm_destroy_fb(&buf);
+fail1:
+	drmModeFreeConnector(conn);
+	drmModeFreePlaneResources(plane_res);
+	drmModeFreeResources(res);
+	close(fd);
+fail:
+	return -1;
 }
 
-int drm_exit()
+void drm_exit()
 {
 	drm_destroy_fb(&buf);
 	drmModeFreeConnector(conn);
