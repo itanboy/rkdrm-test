@@ -44,24 +44,29 @@ int decode_jpeg(char *filename,struct png_file *pfd)
 		printf("%s not a png file\n",filename);
 		return ret;
 	}
-	
+	//分配和初始化两个libpng相关的结构体
 	pfd->pngstr  = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL); 
 	pfd->pnginfo= png_create_info_struct(pfd->pngstr);
 	
+	//设置错误返回点
 	setjmp(png_jmpbuf(pfd->pngstr));
+	//fseek(fp, 0, SEEK_SET);
 	rewind(pfd->fp); 
+	//指定文件
 	png_init_io(pfd->pngstr, pfd->fp);
 
-	png_read_png(pfd->pngstr, 
-				pfd->pnginfo, PNG_TRANSFORM_EXPAND, 0); 
-	
-	pfd->channels 	= png_get_channels(pfd->pngstr, pfd->pnginfo); 
+	//获取PNG图像的信息
+	png_read_png(pfd->pngstr, pfd->pnginfo, PNG_TRANSFORM_EXPAND, 0); 
+	//channels 4-32bits/3-24bits/...
+	pfd->channels = png_get_channels(pfd->pngstr, pfd->pnginfo); 
 	pfd->width 	 = png_get_image_width(pfd->pngstr, pfd->pnginfo);
 	pfd->height  = png_get_image_height(pfd->pngstr, pfd->pnginfo);
-	printf("3\n");
-	
+	pfd->pixel_depth  =png_get_bit_depth(pfd->pngstr, pfd->pnginfo);
+	//逐行读取数据
 	pucPngData = png_get_rows(pfd->pngstr, pfd->pnginfo); 
 	printf("channels = %d\n",pfd->channels);
+	
+
 	pfd->rgb_size= pfd->width * pfd->height*3; 
 	pfd->buffer = (unsigned char*)malloc(pfd->rgb_size);
 	if (NULL == pfd->buffer) {
@@ -86,7 +91,7 @@ int decode_jpeg(char *filename,struct png_file *pfd)
 				((word | pfd->buffer[i*3]));	
 		buf.vaddr[i] = word ;
 	}
-
+	png_destroy_read_struct(&pfd->pngstr, &pfd->pnginfo, 0);
 	fclose(pfd->fp);
 }
 
