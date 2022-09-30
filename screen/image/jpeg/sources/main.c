@@ -2,11 +2,15 @@
 #include <jpeglib.h>
 #include <jerror.h>
 
+#define PNG_FILE 	0X03
+#define JPEG_FILE 	0X02
+#define BMP_FILE 	0X01 
 
 uint32_t color_table[6] = {RED,GREEN,BLUE,BLACK,WHITE,BLACK_BLUE};
 
 
 struct jpeg_file{
+	char filename[50];
 	FILE* fp;
 	struct jpeg_decompress_struct cinfo;
 	struct jpeg_error_mgr jerr;
@@ -26,30 +30,38 @@ void free_jpeg(struct jpeg_file *jf)
 	free(jf->buffer);
 }
 
-int decode_jpeg(char *filename,struct jpeg_file *jf)
+//判断文件是否是jpeg文件
+int judge_jpeg(char *filename,struct jpeg_file *pfd)
 {
 	int ret;
 	uint32_t word;
-	jf->fp = fopen(filename, "rb");
-	if(jf->fp == NULL){
+	pfd->fp = fopen(filename, "rb");
+	if(pfd->fp == NULL){
 		printf("can't open %s\n",filename);
 		return -1;
 	}
-
-    jf->cinfo.err = jpeg_std_error(&jf->jerr);
+    pfd->cinfo.err = jpeg_std_error(&pfd->jerr);
 	//创建一个jpeg_compress_struct结构体
-    jpeg_create_decompress(&jf->cinfo);
+    jpeg_create_decompress(&pfd->cinfo);
 	
 	//指定jpeg解压的源文件
-    jpeg_stdio_src(&jf->cinfo, jf->fp);
+    jpeg_stdio_src(&pfd->cinfo, pfd->fp);
 	
 	//解析jpeg文件，解析完成后可获得图像的格式
-    ret = jpeg_read_header(&jf->cinfo, TRUE);
+    ret = jpeg_read_header(&pfd->cinfo, TRUE);
 	if(ret < 0){
 		printf("file is not jpg ...\n");
 		return -1;
 	}
- 
+	memcpy(pfd->filename,filename,sizeof(filename));
+	return JPEG_FILE;
+}
+
+int decode_jpeg(char *filename,struct jpeg_file *jf)
+{
+	int ret;
+	uint32_t word;
+
 	jf->cinfo.scale_num = 1;
 	jf->cinfo.scale_denom = 1;
 
@@ -98,6 +110,10 @@ int main(int argc, char **argv)
 	if(ret < 0 ){
 		printf("drm_init fail\n");
 		return -1;
+	}
+	ret =judge_jpeg(argv[1],&jf);
+	if(ret < 0 ){
+		goto fail2;
 	}
 
 	ret = decode_jpeg(argv[1],&jf);

@@ -1,10 +1,14 @@
 #include "drm-core.h"
 #include <png.h>
 
+#define PNG_FILE 	0X03
+#define JPEG_FILE 	0X02
+#define BMP_FILE 	0X01 
+
 uint32_t color_table[6] = {RED,GREEN,BLUE,BLACK,WHITE,BLACK_BLUE};
 
 struct png_file{
-
+	char filename[50];
 	FILE *fp;				//文件符
 	int bpp;				//bits per pixel
 	int size;				//图像大小
@@ -25,16 +29,11 @@ void free_png(struct png_file *pfd)
 	free(pfd->buffer);
 }
 
-
-int decode_png(char *filename,struct png_file *pfd)
+//判断文件是否是png文件
+int judge_png(char *filename,struct png_file *pfd)
 {
 	int ret;
 	char file_head[8]; 
-	int i, j;
-	uint32_t word;
-	int iPos = 0;
-	png_bytepp pucPngData; 
-
 	//打开文件
 	pfd->fp= fopen(filename, "rb");
 	if (pfd->fp== NULL) {
@@ -49,6 +48,20 @@ int decode_png(char *filename,struct png_file *pfd)
 		printf("%s not a png file\n",filename);
 		return ret;
 	}
+	
+	memcpy(pfd->filename,filename,sizeof(filename));
+	return PNG_FILE;
+}
+
+
+int decode_png(struct png_file *pfd)
+{
+	int ret;
+	int i, j;
+	uint32_t word;
+	int iPos = 0;
+	png_bytepp pucPngData; 
+
 	//分配和初始化两个libpng相关的结构体
 	pfd->png_ptr  = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL); 
 	pfd->info_ptr= png_create_info_struct(pfd->png_ptr);
@@ -105,11 +118,11 @@ int main(int argc, char **argv)
 	uint32_t word;
 	struct png_file pfd;
 
-	// if(argc <2 ){
-	// 	printf("Wrong use !!!!\n");
-	// 	printf("Usage: %s [xxx.jpg / xxx.jpeg]\n",argv[0]);
-	// 	goto fail1;
-	// }
+	if(argc <2 ){
+		printf("Wrong use !!!!\n");
+		printf("Usage: %s [xxx.png]\n",argv[0]);
+		goto fail1;
+	}
 
 	ret = drm_init();	
 	if(ret < 0 ){
@@ -117,7 +130,11 @@ int main(int argc, char **argv)
 		goto fail1;
 	}
 
-	ret = decode_png("file/png/cat.png",&pfd);
+	ret = judge_png(argv[1],&pfd);
+	if(ret<0)
+		goto fail2;
+
+	ret = decode_png(&pfd);
 	if(ret<0){
 		printf("%d",ret);
 		goto fail2;

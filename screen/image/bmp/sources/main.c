@@ -4,8 +4,8 @@ uint32_t color_table[6] = {RED,GREEN,BLUE,BLACK,WHITE,BLACK_BLUE};
 
 
 struct bmpfile {
+	FILE* fp;
 	int fd;
-	int real;
 	int file_size;		//文件中图像的大小-4Bytes
 	int bmp_offset;		//图像偏移量-4Bytes
 	int biSize;			//位图信息头大小-4Bytes
@@ -23,74 +23,87 @@ struct bmpfile {
 	unsigned char *bmp_buf;		//将bmp文件的格式改成图像rgb格式
 };
 
-int get_bmp_file(char *filename,struct bmpfile *bf)
+int judge_bmp(char *filename,struct bmpfile *pfd)
 {
-	int fd_bmp,offset = 0;
+	int offset = 0;
 	int count;
-	int i;
-	int word = 0;
-	char bmp_head[14];
-	int size;
+	char file_head[14];
 
-	fd_bmp = open(filename,O_RDWR);
-	if(fd_bmp <1){
+	pfd->fp = fopen(filename,"rb");
+	if(pfd->fp == NULL){
 		printf("open file fail\n");
 		return -1;
 	}
-
-	count = read(fd_bmp,bmp_head,14);
+	count = fread(file_head,1,14,pfd->fp);
 	if(count != 14){
 		printf("read file fail\n");
 		return -1;
 	}
 
-	if(bmp_head[0] == 0x42 &&  bmp_head[1] == 0x4d){
-		bf->real = 1;
-		bf->fd = fd_bmp;
-
+	if(file_head[0] == 0x42 &&  file_head[1] == 0x4d){
 		//解析参数
 		offset = 2;
-		memcpy(&bf->file_size,bmp_head+offset,4);
+		memcpy(&pfd->file_size,file_head+offset,4);
 		offset += 8;		//中间有四个字节的空白区域
-		memcpy(&bf->bmp_offset,bmp_head+offset,4);
-		offset += 4;
-		bf->mem_buf = (unsigned char *)mmap(NULL , bf->file_size, 
-							PROT_READ | PROT_WRITE, MAP_SHARED, 
-							fd_bmp, 0);
-		memcpy(&bf->biSize,bf->mem_buf+offset,4);
-		offset += 4;
-		memcpy(&bf->biWidth,bf->mem_buf+offset,4);
-		offset += 4;
-		memcpy(&bf->biHeight,bf->mem_buf+offset,4);
-		offset += 4;
-		memcpy(&bf->biPlanes,bf->mem_buf+offset,2);
-		offset += 2;
-		memcpy(&bf->biBitCount,bf->mem_buf+offset,2);
-		offset += 2;
-		memcpy(&bf->biCompression,bf->mem_buf+offset,4);
-		offset += 4;
-		memcpy(&bf->biSizeImage,bf->mem_buf+offset,4);
-		offset += 4;
-		memcpy(&bf->biXPelsPerMeter,bf->mem_buf+offset,4);
-		offset += 4;
-		memcpy(&bf->biYPelsPerMeter,bf->mem_buf+offset,4);
-		offset += 4;
-		memcpy(&bf->biClrUsed,bf->mem_buf+offset,4);
-		offset += 4;
-		memcpy(&bf->biClrImportant,bf->mem_buf+offset,4);
-
-		//分配空间，操作指针需要分配空间
-		bf->bmp_buf = malloc(bf->biSizeImage);
-
-		//将bmp文件的格式改为RGB适用的格式
-		for(i = 0;i<bf->biHeight;i++)
-			memcpy( bf->bmp_buf + i*bf->biWidth*3 , bf->mem_buf +(bf->biHeight-1-i)*bf->biWidth*3+bf->bmp_offset,bf->biWidth * 3);
+		memcpy(&pfd->bmp_offset,file_head+offset,4);
+		fclose(pfd->fp);
+		return 1;
 	}
 	else{
-		bf->real = 0;
+		fclose(pfd->fp);
 		return -1;
 	}
-	return	fd_bmp;
+		
+}
+
+int get_bmp_file(char *filename,struct bmpfile *bf)
+{
+	
+	int i;
+	int word = 0;
+	char bmp_head[14];
+	int size;
+	int offset = 14;
+
+	bf->fd = open(filename,O_RDWR);
+	if(bf->fd < 0){
+		printf("can not openfile\n");
+		return -1;
+	}
+
+	bf->mem_buf = (unsigned char *)mmap(NULL , bf->file_size, 
+						PROT_READ | PROT_WRITE, MAP_SHARED, 
+						bf->fd, 0);
+	memcpy(&bf->biSize,bf->mem_buf+offset,4);
+	offset += 4;
+	memcpy(&bf->biWidth,bf->mem_buf+offset,4);
+	offset += 4;
+	memcpy(&bf->biHeight,bf->mem_buf+offset,4);
+	offset += 4;
+	memcpy(&bf->biPlanes,bf->mem_buf+offset,2);
+	offset += 2;
+	memcpy(&bf->biBitCount,bf->mem_buf+offset,2);
+	offset += 2;
+	memcpy(&bf->biCompression,bf->mem_buf+offset,4);
+	offset += 4;
+	memcpy(&bf->biSizeImage,bf->mem_buf+offset,4);
+	offset += 4;
+	memcpy(&bf->biXPelsPerMeter,bf->mem_buf+offset,4);
+	offset += 4;
+	memcpy(&bf->biYPelsPerMeter,bf->mem_buf+offset,4);
+	offset += 4;
+	memcpy(&bf->biClrUsed,bf->mem_buf+offset,4);
+	offset += 4;
+	memcpy(&bf->biClrImportant,bf->mem_buf+offset,4);
+
+	//分配空间，操作指针需要分配空间
+	bf->bmp_buf = malloc(bf->biSizeImage);
+
+	//将bmp文件的格式改为RGB适用的格式
+	for(i = 0;i<bf->biHeight;i++)
+		memcpy( bf->bmp_buf + i*bf->biWidth*3 , bf->mem_buf +(bf->biHeight-1-i)*bf->biWidth*3+bf->bmp_offset,bf->biWidth * 3);
+
+	return 0;
 }
 
 
@@ -160,9 +173,13 @@ int main(int argc, char **argv)
 		printf("drm init fail\n");
 		return -1;
 	}
-
-	fd_bmp = get_bmp_file(argv[1],&cbf);
-	if(fd_bmp < 0){
+	ret = judge_bmp(argv[1],&cbf);
+	if(ret < 0){
+		printf("something wrong in bmp file %d\n",fd_bmp);
+		goto fail2;
+	}
+	ret = get_bmp_file(argv[1],&cbf);
+	if(ret < 0){
 		printf("something wrong in bmp file %d\n",fd_bmp);
 		goto fail2;
 	}
