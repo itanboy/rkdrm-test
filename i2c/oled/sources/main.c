@@ -1,16 +1,3 @@
-
-/************************************************************/
-//文件名：mpu6050.c
-//功能:测试linux下iic驱动oled显示程序
-//使用说明: (1)
-//          (2)
-//          (3)
-//          (4)
-//作者:pengjie
-//日期:2019-07-03
-
-/************************************************************/
-//包含头文件
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -36,11 +23,14 @@ extern const unsigned char BMP1[];
 int main(int argc, char *argv[])
 {
     int i = 0; //用于循环
-
-    fd = open("/dev/i2c-3", O_RDWR); // open file and enable read and  write
-
+    if(argc < 2){
+        printf("Wrong use !!!!\n");
+	 	printf("Usage: %s [dev]\n",argv[0]);
+        return -1;
+    }
+    fd = open(argv[1], O_RDWR); // open file and enable read and  write
     if (fd < 0){
-        perror("Can't open /dev/i2c-3 \n"); // open i2c dev file fail
+        printf("Can't open %s \n",argv[1]); // open i2c dev file fail
         exit(1);
     }
 
@@ -61,8 +51,7 @@ int main(int argc, char *argv[])
         sleep(1);
         OLED_CLS(Address); //清屏
 
-        for (i = 0; i < 4; i++)
-        {
+        for (i = 0; i < 4; i++){
             OLED_ShowCN(Address,22 + i * 16, 0, i); //测试显示中文
         }
         sleep(1);

@@ -14,9 +14,7 @@ static uint8_t bits = 8;        // 接收、发送数据位数
 static uint32_t speed = 10000000; // 发送速度
 static uint16_t delay;          //保存延时时间
 
-int fd;                  // SPI 控制引脚的设备文件描述符
-int fd = -1;
-
+extern int fd;
 int fd_gpio_ctrl;
 
 /*程序中使用到的点阵 字库*/
@@ -240,11 +238,6 @@ void spi_and_gpio_init(void)
 {
   	int ret = 0;
   	gpio_init();
-  	/*打开 SPI 设备*/
-  	fd = open(SPI_DEV_PATH, O_RDWR);
-  	if (fd < 0)
-    	printf("can't open %s ",SPI_DEV_PATH);
-
   	/*
 	 * spi mode 设置SPI 工作模式
 	 */

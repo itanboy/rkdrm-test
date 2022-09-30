@@ -18,6 +18,7 @@ CFLAGS = $(patsubst %, -I%, $(INC_DIR))
 #目标文件
 $(BUILD_DIR)/$(TARGET): $(OBJS)
 	$(CC) -o $@ $^ $(CFLAGS)
+	ln -sf $(BUILD_DIR)/$(TARGET) $(TARGET) 
 
 #*.o文件的生成规则
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c $(DEPS)

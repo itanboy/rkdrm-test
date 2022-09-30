@@ -13,7 +13,7 @@
 #include <linux/spi/spidev.h>
 
 #include "spi_oled_app.h"
-extern int fd;
+int fd;
 /*程序中使用到的点阵 字库*/
 extern const unsigned char BMP1[];
 
@@ -21,7 +21,20 @@ extern const unsigned char BMP1[];
 int main(int argc, char *argv[])
 {
 	int i = 0; //用于循环
-	oled_init();
+	if(argc < 2){
+    printf("Wrong use !!!!\n");
+        printf("Usage: %s [dev]\n",argv[0]);
+        return -1;
+    }
+	printf("%s\n",argv[1]);
+	/*打开 SPI 设备*/
+    fd = open(argv[1], O_RDWR); // open file and enable read and  write
+    if (fd < 0){
+        printf("Can't open %s \n",argv[1]); // open i2c dev file fail
+        exit(1);
+    }
+
+	oled_init(fd);
 	printf("oled_init\n");
 	OLED_Fill(0xFF);
 	while (1){

@@ -41,13 +41,9 @@ void transfer(int fd, uint8_t const *tx, uint8_t const *rx, size_t len)
   	  	printf("can't send spi message\n");
 }
 
-void spi_init(void)
+void spi_init(int fd)
 {
   	int ret = 0;
-  	/*打开 SPI 设备*/
-  	fd = open(SPI_DEV_PATH, O_RDWR);
-  	if (fd < 0)
-    	printf("can't open %s\n",SPI_DEV_PATH);
 
 	// spi mode 设置SPI 工作模式
   	ret = ioctl(fd, SPI_IOC_WR_MODE32, &mode);
@@ -72,8 +68,22 @@ void spi_init(void)
 
 int main(int argc, char *argv[])
 {
+	int fd;
+	
+	if(argc < 2){
+    printf("Wrong use !!!!\n");
+        printf("Usage: %s [dev]\n",argv[0]);
+        return -1;
+    }
+	/*打开 SPI 设备*/
+    fd = open(argv[1], O_RDWR); // open file and enable read and  write
+    if (fd < 0){
+        printf("Can't open %s \n",argv[1]); // open i2c dev file fail
+        exit(1);
+    }
+
 	/*初始化SPI */
-	spi_init();
+	spi_init(fd);
 
 	/*执行发送*/
 	transfer(fd, tx_buffer, rx_buffer, sizeof(tx_buffer));
