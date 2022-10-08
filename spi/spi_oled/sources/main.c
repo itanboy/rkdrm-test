@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-	oled_init(fd);
+	oled_init();
 	printf("oled_init\n");
 	OLED_Fill(0xFF);
 	while (1){
