@@ -35,11 +35,7 @@ int judge_jpeg(char *filename,struct jpeg_file *pfd)
 {
 	int ret;
 	uint32_t word;
-	pfd->fp = fopen(filename, "rb");
-	if(pfd->fp == NULL){
-		printf("can't open %s\n",filename);
-		return -1;
-	}
+
     pfd->cinfo.err = jpeg_std_error(&pfd->jerr);
 	//创建一个jpeg_compress_struct结构体
     jpeg_create_decompress(&pfd->cinfo);
@@ -53,7 +49,7 @@ int judge_jpeg(char *filename,struct jpeg_file *pfd)
 		printf("file is not jpg ...\n");
 		return -1;
 	}
-	memcpy(pfd->filename,filename,sizeof(filename));
+
 	return JPEG_FILE;
 }
 
@@ -111,6 +107,15 @@ int main(int argc, char **argv)
 		printf("drm_init fail\n");
 		return -1;
 	}
+
+	jf.fp= fopen(argv[1], "rb");
+	if (jf.fp== NULL) {
+		printf("can not open file");
+		return -1;
+	}
+
+	memcpy(jf.filename,argv[1],sizeof(argv[1]));
+
 	ret =judge_jpeg(argv[1],&jf);
 	if(ret < 0 ){
 		goto fail2;

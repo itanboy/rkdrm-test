@@ -30,26 +30,20 @@ void free_png(struct png_file *pfd)
 }
 
 //判断文件是否是png文件
-int judge_png(char *filename,struct png_file *pfd)
+int judge_png(struct png_file *pfd)
 {
 	int ret;
 	char file_head[8]; 
-	//打开文件
-	pfd->fp= fopen(filename, "rb");
-	if (pfd->fp== NULL) {
-		return -1;
-	}
 	//读取文件的八个字节
 	if (fread(file_head, 1, 8, pfd->fp) != 8) 
 		return -1;
 	//根据8个字节判断是否为png文件
 	ret = png_sig_cmp(file_head, 0, 8); 
 	if(ret < 0){
-		printf("%s not a png file\n",filename);
+		printf("not a png file\n");
 		return ret;
 	}
-	
-	memcpy(pfd->filename,filename,sizeof(filename));
+
 	return PNG_FILE;
 }
 
@@ -130,7 +124,16 @@ int main(int argc, char **argv)
 		goto fail1;
 	}
 
-	ret = judge_png(argv[1],&pfd);
+		//打开文件
+	pfd.fp= fopen(argv[1], "rb");
+	if (pfd.fp== NULL) {
+		printf("can not open file");
+		return -1;
+	}
+
+	memcpy(pfd.filename,argv[1],sizeof(argv[1]));
+
+	ret = judge_png(&pfd);
 	if(ret<0)
 		goto fail2;
 
