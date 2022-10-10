@@ -1,3 +1,3 @@
 # lubancat-test
 
-this for lubancat-rk board
+应用开发
