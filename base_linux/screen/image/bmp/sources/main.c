@@ -130,13 +130,12 @@ int get_bmp_file(char *filename,struct bmpfile *bf)
 	if(bf->biBitCount == 24 || bf->biBitCount == 32 )
 		bf->bpp = bf->biBitCount/8;
 
-	show_bmp_info(bf);
 	//分配空间，操作指针需要分配空间
 	bf->bmp_buf = malloc(bf->biSizeImage);
 
 	//将bmp文件的格式改为RGB适用的格式
 	for(i = 0;i<bf->biHeight;i++)
-		memcpy( bf->bmp_buf + i*bf->biWidth*bf->bpp , 
+		memcpy( bf->bmp_buf + i*bf->biWidth*bf->bpp, 
 				bf->mem_buf +(bf->biHeight-1-i)*bf->biWidth*bf->bpp+ bf->bmp_offset,
 				bf->biWidth * bf->bpp);
 
@@ -214,7 +213,7 @@ int main(int argc, char **argv)
 	}
 	//打印信息
 	show_bmp_info(&cbf);
-	//显示画面信息
+	//显示画面信息在正中央
 	ret = show_bmp(&cbf , buf.width/2 - cbf.biWidth/2, buf.height/2 - cbf.biHeight/2);
 	if(ret < 0){
 		printf("show_bmp wrong!\n");

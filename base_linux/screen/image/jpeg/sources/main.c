@@ -19,6 +19,7 @@ struct jpeg_file{
 	int height;
 	int size;
 	int row_size;
+	int Bpp;
 
 	uint8_t *pucbuffer;
 	uint8_t *buffer;
@@ -67,13 +68,13 @@ int decode_jpeg(char *filename,struct jpeg_file *jf)
     jf->row_size = jf->cinfo.output_width * jf->cinfo.output_components;
     jf->width = jf->cinfo.output_width;
     jf->height = jf->cinfo.output_height;
-
+	jf->Bpp = jf->cinfo.output_components;
     jf->size = jf->row_size * jf->cinfo.output_height; 
 	jf->pucbuffer = malloc(jf->row_size);
     jf->buffer = malloc(jf->size);
     
-    printf("size: %d w: %d h: %d row_size: %d \n",
-			jf->size,jf->width,jf->height,jf->row_size);
+    printf("size: %d w: %d h: %d row_size: %d ,Bpp: %d\n",
+			jf->size,jf->width,jf->height,jf->row_size,jf->Bpp);
 
     while (jf->cinfo.output_scanline < jf->cinfo.output_height){
         //可以读取RGB数据到buffer中，参数3能指定读取多少行
@@ -89,9 +90,32 @@ int decode_jpeg(char *filename,struct jpeg_file *jf)
 	return 0;
 }
 
+
+int show_jpeg(struct jpeg_file *jf,int x ,int y)
+{
+
+	int i,j;
+	uint32_t word;
+
+	for(j=0; j<jf->height; j++){
+		for(i = 0 ; i<jf->width;i++){
+			if((j+y) < buf.height && (i+x)<buf.width){
+				word = 0;
+				word = ((word | jf->buffer[(j*jf->width+i)*jf->Bpp+2]) | 
+					   ((word | jf->buffer[(j*jf->width+i)*jf->Bpp+1])<<8) | 
+					   ((word | jf->buffer[(j*jf->width+i)*jf->Bpp])<<16));
+				buf.vaddr[(j+y)*buf.width+(x+i)] = word;
+			}
+			else
+				continue;
+		}
+	}
+}
+
 int main(int argc, char **argv)
 {
 	int i,j;
+	int x =0, y=0 ;
 	uint32_t word;
 	int ret;
 	struct jpeg_file jf;
@@ -127,14 +151,9 @@ int main(int argc, char **argv)
 		goto fail2;
 	}
 
-	for(i=0;i<720*1280;i++){
-		word = 0;
-		word =  ((word | jf.buffer[i*3])<<16) | 
-				((word | jf.buffer[i*3+1])<<8) | 
-				((word | jf.buffer[i*3+2]));	
-		buf.vaddr[i] = word ;
-	}
-	sleep(3);
+	show_jpeg(&jf , buf.width/2 - jf.width/2, buf.height/2 - jf.height/2);
+	
+	getchar();
 	
     fclose(jf.fp);
 	free_jpeg(&jf);

@@ -11,6 +11,7 @@ struct png_file{
 	char filename[50];
 	FILE *fp;				//文件符
 	int bpp;				//bits per pixel
+	int Bpp;				//Bytes per pixel
 	int size;				//图像大小
 	int channels; 			//通道
 	int rowsize;			//每行占用的字节大小
@@ -75,12 +76,13 @@ int decode_png(struct png_file *pfd)
 	pfd->width 	 = png_get_image_width(pfd->png_ptr, pfd->info_ptr);
 	pfd->height  = png_get_image_height(pfd->png_ptr, pfd->info_ptr);
 	pfd->bpp  = png_get_bit_depth(pfd->png_ptr, pfd->info_ptr) * pfd->channels;
+	pfd->Bpp = pfd->bpp/8;
 	pfd->rowsize = png_get_rowbytes(pfd->png_ptr, pfd->info_ptr);
 	printf("channels = %d\n",pfd->channels);
-	printf("bpp = %d\n",pfd->bpp);
+	printf("Bpp = %d\n",pfd->Bpp);
 
 	//获取图像的总大小，为图形缓冲区申请空间
-	pfd->size= pfd->width * pfd->height*3; 
+	pfd->size= pfd->width * pfd->height*pfd->Bpp; 
 	pfd->buffer = (unsigned char*)malloc(pfd->size);
 	if (NULL == pfd->buffer) {
 		printf("malloc rgba faile ...\n");
@@ -94,7 +96,8 @@ int decode_png(struct png_file *pfd)
 
 	//存放buffer区
 	for (i = 0; i < pfd->height; i ++) {
-		for (j = 0; j < pfd->width*3; j += 3) {
+		for (j = 0; j < pfd->width*pfd->Bpp; j += pfd->Bpp) {
+			pfd->buffer[iPos++] = pucPngData[i][j+3];
 			pfd->buffer[iPos++] = pucPngData[i][j+2];
 			pfd->buffer[iPos++] = pucPngData[i][j+1];
 			pfd->buffer[iPos++] = pucPngData[i][j+0];
@@ -104,7 +107,25 @@ int decode_png(struct png_file *pfd)
 	fclose(pfd->fp);
 }
 
+int show_png(struct png_file *jf,int x ,int y)
+{
+	int i,j;
+	uint32_t word;
 
+	for(j=0; j<jf->height; j++){
+		for(i = 0 ; i<jf->width;i++){
+			if((j+y) < buf.height && (i+x)<buf.width){
+				word = 0;
+				word = ((word | jf->buffer[(j*jf->width+i)*jf->Bpp+3]<<16) | 
+					   ((word | jf->buffer[(j*jf->width+i)*jf->Bpp+2])<<8) | 
+					   ((word | jf->buffer[(j*jf->width+i)*jf->Bpp+1])));
+				buf.vaddr[(j+y)*buf.width+(x+i)] = word;
+			}
+			else
+				continue;
+		}
+	}
+}
 int main(int argc, char **argv)
 {
 	int i,j;
@@ -143,14 +164,8 @@ int main(int argc, char **argv)
 		goto fail2;
 	}
 
-		//显示图像
-	for(i=0;i<720*1280;i++){
-		word = 0;
-		word =  ((word | pfd.buffer[i*3+2])<<16) | 
-				((word | pfd.buffer[i*3+1])<<8) | 
-				((word | pfd.buffer[i*3]));	
-		buf.vaddr[i] = word ;
-	}
+	//显示图像
+	show_png(&pfd , buf.width/2 - pfd.width/2, buf.height/2 - pfd.height/2);
 		
 	getchar();
 	free_png(&pfd);
