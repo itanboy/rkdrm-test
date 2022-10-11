@@ -152,18 +152,18 @@ int main(int argc, char **argv)
 	}
 
 	getchar();
-	//将framebuffer截取部分放到图层一上，
-	//此时屏幕改变，将320x800的framebuffer区域拉伸到720x1280中
+	//将framebuffer上2/3的区域放到图层一上，
+	//此时屏幕改变，将的framebuffer区域拉伸到整个屏幕中
 	drmModeSetPlane(fd, plane_id[0], crtc_id, buf.fb_id, 0,
-			0, 0, 720, 1280,
-			0 << 16, 0 << 16, 320 << 16, 800 << 16);
+			0, 0, buf.width, buf.height,
+			0 << 16, 0 << 16, buf.width << 16, buf.height/3*2 << 16);
 
 	getchar();
-	//将framebuffer区域缩放一倍放到图层二上，把图层二的位置放到屏幕的(360,640)
+	//将framebuffer区域缩放一倍放到图层二上，把图层二的位置放到屏幕的下方
 	//叠加在图层一上，可以看到图层二覆盖了图层一的部分区域
 	drmModeSetPlane(fd, plane_id[1], crtc_id, buf.fb_id, 0,
-			180, 640, 360, 640,
-			0 << 16, 0 << 16, 720 << 16, 1280 << 16);
+			buf.width/4, buf.height/2, buf.width/2, buf.height/2,
+			0 << 16, 0 << 16, buf.width << 16, buf.height << 16);
 
 	getchar();
 
