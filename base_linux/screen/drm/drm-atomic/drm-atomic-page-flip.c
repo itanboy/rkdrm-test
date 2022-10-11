@@ -313,7 +313,7 @@ static void drm_page_flip_handler(int fd, uint32_t frame,
 		count=0;
     //设置偏移量
 	if(count==1)
-		ps5.src_y = 1280;
+		ps5.src_y = buf.height;
 	else 
 		ps5.src_y = 0;
 	drm_set_plane(fd,&ps5);
@@ -342,19 +342,22 @@ int main(int argc, char **argv)
 	ps5.fb_id = buf.fb_id;
 	ps5.crtc_x = 0;
 	ps5.crtc_y = 0;
-	ps5.crtc_w = 720;
-	ps5.crtc_h = 1280;
+	ps5.crtc_w = buf.width;
+	ps5.crtc_h = buf.height;
 	ps5.src_x = 0;
 	ps5.src_y = 0;
-	ps5.src_w = 720;
-	ps5.src_h = 1280;
+	ps5.src_w = buf.width;
+	ps5.src_h = buf.height;
 	drm_set_plane(fd,&ps5);
 
 	getchar();
+	printf("switch\n");
 	drmHandleEvent(fd, &ev);
 	getchar();
+	printf("switch\n");
 	drmHandleEvent(fd, &ev);
 	getchar();
+	printf("exit\n");
 	drm_exit();	
 
 	return 0;

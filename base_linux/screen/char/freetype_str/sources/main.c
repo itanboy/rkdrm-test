@@ -209,6 +209,7 @@ int display_string(FT_Face face, uint16_t *str,int len, int lcd_x, int lcd_y,FT_
 		
         /* 计算下一个字符的原点: increment pen position */
         pen.x += slot->advance.x;
+		printf("%ld\n",pen.x/64);
 		// 竖向字体使用
 		// pen.y += slot->advance.y;
     }
@@ -264,18 +265,17 @@ int main(int argc, char **argv)
 	//显示野火科技
 	FT_Set_Pixel_Sizes(face, 80, 0);
 	compute_string_bbox(face, unicode,u_len,&bbox );
-	display_string(face, unicode,u_len, 200, 1000,&bbox);
+	display_string(face, unicode,u_len, (buf.width - u_len * 80)/2, buf.height - 280,&bbox);
 
 	//显示官网
 	FT_Set_Pixel_Sizes(face, font_size/3, 0);
 	compute_string_bbox(face,unicode1,u1_len,&bbox);
-	display_string(face, unicode1,u1_len ,120, 1100,&bbox);
-		
-
+	display_string(face, unicode1,u1_len ,(buf.width - u1_len * font_size/6)/2, buf.height - 180,&bbox);
+	
 	//显示欢迎来到野火科技		
 	FT_Set_Pixel_Sizes(face, 60, 0);
 	compute_string_bbox(face, f_name.unicode,f_name.len,&bbox);
-	display_string(face, f_name.unicode, f_name.len,135, 500,&bbox);
+	display_string(face, f_name.unicode, f_name.len,(buf.width - f_name.len * 60)/2, buf.height/2-200,&bbox);
 
 	getchar();
 	drm_exit();	

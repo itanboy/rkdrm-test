@@ -36,6 +36,8 @@ void show_string(uint32_t color)
 	int row=64;
 	int x_offset = (buf.width - 64*8)/2;
 	int y_offset = (buf.height - 16*4)/2;
+	printf("%d,%d\n",x_offset,y_offset);
+	printf("%d,%d\n",buf.width,buf.height);
 	for(j=0;j<4;j++){
 		for(i=0;i<64;i++){
 			show_8x16(i*8+x_offset,16*j+y_offset,color,i+j*64);
@@ -58,6 +60,7 @@ int main(int argc, char **argv)
 		buf.vaddr[i] = BLACK_BLUE;
 	//屏幕中间显示字体
 	show_string(WHITE);
+
 	//获取字符--enter键进入下一步
     getchar();
 	drm_exit();	

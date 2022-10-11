@@ -138,7 +138,7 @@ int main(int argc, char **argv)
 	int font_size = 180;
 	int angle_degree = 0;
 
-	unsigned char str1[] = "野火科技A";
+	unsigned char str1[] = "野火科技";
 	unsigned char str2[] = "www.embedfire.com";
 	unsigned char str3[] = "abcdefghijklmnopq";
 	uint16_t unicode[20];
@@ -160,12 +160,12 @@ int main(int argc, char **argv)
 
 	// 显示野火科技
 	for(i = 0 ; i<unicode_size;i++)
-		freetype_set_char(face,0+font_size*i,640,font_size,angle_degree,unicode[i] );
+		freetype_set_char(face,0+font_size*i,(buf.height-font_size)/2,font_size,angle_degree,unicode[i] );
 
 	// 显示官网
 	unicode_size = utf_8_to_unicode_string(str2,unicode);
 	for(i = 0 ; i<unicode_size;i++)
-		freetype_set_char(face,0+font_size/6*i,820,font_size/3,angle_degree,unicode[i] );
+		freetype_set_char(face,0+font_size/6*i,(buf.height-font_size)/2 +font_size ,font_size/3,angle_degree,unicode[i] );
 
 	getchar();
 	drm_exit();	

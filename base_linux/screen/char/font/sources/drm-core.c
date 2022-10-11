@@ -261,12 +261,12 @@ int drm_init()
 	ps5.fb_id = buf.fb_id;
 	ps5.crtc_x = 0;
 	ps5.crtc_y = 0;
-	ps5.crtc_w = 720;
-	ps5.crtc_h = 1280;
+	ps5.crtc_w = buf.width;
+	ps5.crtc_h = buf.height;
 	ps5.src_x = 0;
 	ps5.src_y = 0;
-	ps5.src_w = 720;
-	ps5.src_h = 1280;
+	ps5.src_w = buf.width;
+	ps5.src_h = buf.height;
 	ret = drm_set_plane(fd,&ps5);
 	if(ret < 0){
 		printf("drm_set_plane fail\n");

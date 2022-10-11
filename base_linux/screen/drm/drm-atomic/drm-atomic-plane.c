@@ -310,19 +310,19 @@ int main(int argc, char **argv)
 	ps5.fb_id = buf.fb_id;
 	ps5.crtc_x = 0;
 	ps5.crtc_y = 0;
-	ps5.crtc_w = 720;
-	ps5.crtc_h = 1280;
+	ps5.crtc_w = buf.width;
+	ps5.crtc_h = buf.height;
 	ps5.src_x = 0;
 	ps5.src_y = 0;
-	ps5.src_w = 720;
-	ps5.src_h = 1280;
+	ps5.src_w = buf.width;
+	ps5.src_h = buf.height;
 	drm_set_plane(fd,&ps5);
 
 	getchar();
 	//将framebuffer截取部分放到图层一上，
 	//此时屏幕改变，将320x800的framebuffer区域拉伸到720x1280中
-	ps5.src_w = 320;
-	ps5.src_h = 800;
+	ps5.src_w = buf.width;
+	ps5.src_h = buf.height/3*2;
 	drm_set_plane(fd,&ps5);
 
 	getchar();
@@ -330,14 +330,14 @@ int main(int argc, char **argv)
 	//叠加在图层一上，可以看到图层二覆盖了图层一的部分区域
 	ps5.plane_id = plane_id[1];
 	ps5.fb_id = buf.fb_id;
-	ps5.crtc_x = 180;
-	ps5.crtc_y = 640;
-	ps5.crtc_w = 360;
-	ps5.crtc_h = 640;
+	ps5.crtc_x = buf.width/4;
+	ps5.crtc_y = buf.height/2;
+	ps5.crtc_w = buf.width/2;
+	ps5.crtc_h = buf.height/2;
 	ps5.src_x = 0;
 	ps5.src_y = 0;
-	ps5.src_w = 720;
-	ps5.src_h = 1280;
+	ps5.src_w = buf.width;
+	ps5.src_h = buf.height;
 	drm_set_plane(fd,&ps5);
 	//the price of PS5 is rising,no money to pay,damn it!!!
 	//wait!mine car is going to become cheap,PC games i'm comming!!

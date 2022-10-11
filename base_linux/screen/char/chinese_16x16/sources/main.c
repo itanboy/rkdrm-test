@@ -107,10 +107,10 @@ int main(int argc, char **argv)
 	show_string(WHITE);
 	//显示中文“野火科技”
 	for(i = 0 ;i<4;i++)
-		show_chinese(330+i*16,1000,YHKJ+i*2);
+		show_chinese((buf.width-64)/2+i*16,buf.height - 150,YHKJ+i*2);
 	//显示网站"www.embedfire.com"
 	for(i=0;i<strlen(web);i++){
-		show_8x16(290+i*8,1025,RED,web[i]);
+		show_8x16((buf.width-8*strlen(web))/2+i*8,buf.height - 125,RED,web[i]);
 	}
 	//按键后进入
 	getchar();
