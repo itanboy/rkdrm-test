@@ -11,23 +11,20 @@ uint32_t color_table[6] = {RED,GREEN,BLUE,BLACK,WHITE,BLACK_BLUE};
 
 struct jpeg_file{
 	char filename[50];
-	FILE* fp;
+	FILE* fp;			//文件符
 	struct jpeg_decompress_struct cinfo;
 	struct jpeg_error_mgr jerr;
 
-	int width;
-	int height;
-	int size;
-	int row_size;
-	int Bpp;
-
-	uint8_t *pucbuffer;
-	uint8_t *buffer;
+	int width;			//图像宽度
+	int height;			//图像高度
+	int size;			//图像大小
+	int row_size;		//每行占用的字节大小
+	int Bpp;			//Bytes per pixel
+	uint8_t *buffer;	//解压后的图像buffer
 };
 
 void free_jpeg(struct jpeg_file *jf)
 {
-	free(jf->pucbuffer);
 	free(jf->buffer);
 }
 
@@ -58,32 +55,42 @@ int decode_jpeg(char *filename,struct jpeg_file *jf)
 {
 	int ret;
 	uint32_t word;
-
+	unsigned char *buf_cpy;
+	//临时变量行buffer
+	uint8_t *pucbuffer;
+	//放大倍率
 	jf->cinfo.scale_num = 1;
+	//缩小倍率
 	jf->cinfo.scale_denom = 1;
 
 	//对cinfo所指定的源文件进行解压，并将解压后的数据存到cinfo结构体的成员变量中。
     jpeg_start_decompress(&jf->cinfo);
- 
+	//获取图片基本信息
     jf->row_size = jf->cinfo.output_width * jf->cinfo.output_components;
     jf->width = jf->cinfo.output_width;
     jf->height = jf->cinfo.output_height;
 	jf->Bpp = jf->cinfo.output_components;
-    jf->size = jf->row_size * jf->cinfo.output_height; 
-	jf->pucbuffer = malloc(jf->row_size);
+    jf->size = jf->row_size * jf->cinfo.output_height;
+	//分配内存空间 
+	pucbuffer = malloc(jf->row_size);
     jf->buffer = malloc(jf->size);
-    
+
     printf("size: %d w: %d h: %d row_size: %d ,Bpp: %d\n",
 			jf->size,jf->width,jf->height,jf->row_size,jf->Bpp);
+	//缓冲指针指向buffer		
+	buf_cpy = jf->buffer;
 
     while (jf->cinfo.output_scanline < jf->cinfo.output_height){
         //可以读取RGB数据到buffer中，参数3能指定读取多少行
-		jpeg_read_scanlines(&jf->cinfo, &jf->pucbuffer, 1);
+		jpeg_read_scanlines(&jf->cinfo, &pucbuffer, 1);
         //复制到内存
-        memcpy(jf->buffer + jf->cinfo.output_scanline * jf->row_size, jf->pucbuffer, jf->row_size);
+		memcpy(buf_cpy , pucbuffer, jf->row_size);
+		buf_cpy = buf_cpy + jf->row_size;
     }
+
 	// 完成解码
 	jpeg_finish_decompress(&jf->cinfo);
+	free(pucbuffer);
 	//释放结构体
     jpeg_destroy_decompress(&jf->cinfo);
 
@@ -101,9 +108,9 @@ int show_jpeg(struct jpeg_file *jf,int x ,int y)
 		for(i = 0 ; i<jf->width;i++){
 			if((j+y) < buf.height && (i+x)<buf.width){
 				word = 0;
-				word = ((word | jf->buffer[(j*jf->width+i)*jf->Bpp+2]) | 
-					   ((word | jf->buffer[(j*jf->width+i)*jf->Bpp+1])<<8) | 
-					   ((word | jf->buffer[(j*jf->width+i)*jf->Bpp])<<16));
+				word = (word | jf->buffer[(j*jf->width+i)*jf->Bpp+2]) | 
+					   (word | jf->buffer[(j*jf->width+i)*jf->Bpp+1])<<8 | 
+					   (word | jf->buffer[(j*jf->width+i)*jf->Bpp])<<16;
 				buf.vaddr[(j+y)*buf.width+(x+i)] = word;
 			}
 			else
@@ -152,11 +159,12 @@ int main(int argc, char **argv)
 	}
 
 	show_jpeg(&jf , buf.width/2 - jf.width/2, buf.height/2 - jf.height/2);
-	
+
 	getchar();
 	
     fclose(jf.fp);
-	free_jpeg(&jf);
+	// free_jpeg(&jf);
+	free(jf.buffer);
 	drm_exit();	
 	return 0;
 

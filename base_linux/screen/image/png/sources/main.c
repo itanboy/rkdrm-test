@@ -52,10 +52,11 @@ int judge_png(struct png_file *pfd)
 int decode_png(struct png_file *pfd)
 {
 	int ret;
-	int i, j;
+	int i, j,k;
 	uint32_t word;
 	int iPos = 0;
-	png_bytepp pucPngData; 
+	unsigned char **pucPngData; 
+	unsigned char *buf_cpy;
 
 	//分配和初始化两个libpng相关的结构体
 	pfd->png_ptr  = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL); 
@@ -72,53 +73,42 @@ int decode_png(struct png_file *pfd)
 	png_read_png(pfd->png_ptr, pfd->info_ptr, PNG_TRANSFORM_EXPAND, 0);
 
 	//channels 4-32bits/3-24bits/...
-	pfd->channels = png_get_channels(pfd->png_ptr, pfd->info_ptr); 
+	pfd->Bpp = png_get_channels(pfd->png_ptr, pfd->info_ptr); 
 	pfd->width 	 = png_get_image_width(pfd->png_ptr, pfd->info_ptr);
 	pfd->height  = png_get_image_height(pfd->png_ptr, pfd->info_ptr);
 	pfd->bpp  = png_get_bit_depth(pfd->png_ptr, pfd->info_ptr) * pfd->channels;
-	pfd->Bpp = pfd->bpp/8;
 	pfd->rowsize = png_get_rowbytes(pfd->png_ptr, pfd->info_ptr);
-	printf("channels = %d\n",pfd->channels);
-	printf("Bpp = %d\n",pfd->Bpp);
-
-	//获取图像的总大小，为图形缓冲区申请空间
 	pfd->size= pfd->width * pfd->height*pfd->Bpp; 
+
 	pfd->buffer = (unsigned char*)malloc(pfd->size);
-	if (NULL == pfd->buffer) {
-		printf("malloc rgba faile ...\n");
-		png_destroy_read_struct(&pfd->png_ptr, &pfd->info_ptr, 0);
-		fclose(pfd->fp);
-		return -1;
-	}
 
 	//按行一次性获得图像
 	pucPngData = png_get_rows(pfd->png_ptr, pfd->info_ptr); 
-
+	buf_cpy = pfd->buffer;
 	//存放buffer区
-	for (i = 0; i < pfd->height; i ++) {
-		for (j = 0; j < pfd->width*pfd->Bpp; j += pfd->Bpp) {
-			pfd->buffer[iPos++] = pucPngData[i][j+3];
-			pfd->buffer[iPos++] = pucPngData[i][j+2];
-			pfd->buffer[iPos++] = pucPngData[i][j+1];
-			pfd->buffer[iPos++] = pucPngData[i][j+0];
-		}
+	for (j = 0; j < pfd->height; j ++) {
+		memcpy(buf_cpy , pucPngData[j] , pfd->rowsize);
+		buf_cpy +=pfd->rowsize ;
 	}
+
 	png_destroy_read_struct(&pfd->png_ptr, &pfd->info_ptr, 0);
 	fclose(pfd->fp);
 }
 
-int show_png(struct png_file *jf,int x ,int y)
+// BGRA
+
+int show_png(struct png_file *pfd,int x ,int y)
 {
 	int i,j;
 	uint32_t word;
 
-	for(j=0; j<jf->height; j++){
-		for(i = 0 ; i<jf->width;i++){
+	for(j=0; j<pfd->height; j++){
+		for(i = 0 ; i<pfd->width;i++){
 			if((j+y) < buf.height && (i+x)<buf.width){
 				word = 0;
-				word = ((word | jf->buffer[(j*jf->width+i)*jf->Bpp+3]<<16) | 
-					   ((word | jf->buffer[(j*jf->width+i)*jf->Bpp+2])<<8) | 
-					   ((word | jf->buffer[(j*jf->width+i)*jf->Bpp+1])));
+				word = (word | pfd->buffer[(j*pfd->width+i)*pfd->Bpp+2]) | 
+					   (word | pfd->buffer[(j*pfd->width+i)*pfd->Bpp+1])<<8 | 
+					   (word | pfd->buffer[(j*pfd->width+i)*pfd->Bpp])<<16;
 				buf.vaddr[(j+y)*buf.width+(x+i)] = word;
 			}
 			else
@@ -156,7 +146,7 @@ int main(int argc, char **argv)
 
 	ret = judge_png(&pfd);
 	if(ret<0)
-		goto fail2;
+		goto fail1;
 
 	ret = decode_png(&pfd);
 	if(ret<0){
@@ -164,7 +154,7 @@ int main(int argc, char **argv)
 		goto fail2;
 	}
 
-	//显示图像
+	//在屏幕中央显示图像
 	show_png(&pfd , buf.width/2 - pfd.width/2, buf.height/2 - pfd.height/2);
 		
 	getchar();

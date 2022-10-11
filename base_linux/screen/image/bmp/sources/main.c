@@ -2,7 +2,6 @@
 
 uint32_t color_table[6] = {RED,GREEN,BLUE,BLACK,WHITE,BLACK_BLUE};
 
-
 struct bmpfile {
 	FILE* fp;
 	int fd;
@@ -21,7 +20,8 @@ struct bmpfile {
 	int biClrImportant;			//索引数目-4Bytes
 	unsigned char *mem_buf;		//内存映射，整个文件
 	unsigned char *bmp_buf;		//将bmp文件的格式改成图像rgb格式
-	unsigned char bpp;			//每个像素占用的字节数
+	unsigned char Bpp;			//每个像素占用的字节数
+	int row_size;
 };
 
 
@@ -85,6 +85,8 @@ int get_bmp_file(char *filename,struct bmpfile *bf)
 	int word = 0;
 	char bmp_head[14];
 	int size;
+	unsigned char *buf_cpy;
+	unsigned char *mem_cpy;
 	int offset = 14;
 
 	bf->fd = open(filename,O_RDWR);
@@ -128,17 +130,20 @@ int get_bmp_file(char *filename,struct bmpfile *bf)
 		bf->biSizeImage = bf->file_size - bf->bmp_offset;
 	
 	if(bf->biBitCount == 24 || bf->biBitCount == 32 )
-		bf->bpp = bf->biBitCount/8;
+		bf->Bpp = bf->biBitCount/8;
 
 	//分配空间，操作指针需要分配空间
 	bf->bmp_buf = malloc(bf->biSizeImage);
-
+	bf->row_size = bf->biWidth * bf->Bpp;
+	mem_cpy = bf->mem_buf + bf->bmp_offset + (bf->biHeight-1)*bf->row_size;
+	buf_cpy = bf->bmp_buf;
 	//将bmp文件的格式改为RGB适用的格式
-	for(i = 0;i<bf->biHeight;i++)
-		memcpy( bf->bmp_buf + i*bf->biWidth*bf->bpp, 
-				bf->mem_buf +(bf->biHeight-1-i)*bf->biWidth*bf->bpp+ bf->bmp_offset,
-				bf->biWidth * bf->bpp);
-
+	for(i = 0;i<bf->biHeight;i++){
+		memcpy(buf_cpy,mem_cpy,bf->row_size);
+		buf_cpy += bf->row_size;
+		mem_cpy -= bf->row_size;
+	}
+		
 	close(bf->fd);
 	return 0;
 }
@@ -165,9 +170,9 @@ int show_bmp(struct bmpfile *bf,int x ,int y)
 			for(i = 0 ; i<bf->biWidth;i++){
 				if((j+y) < buf.height && (i+x)<buf.width){
 					word = 0;
-					word = ((word | bf->bmp_buf[(j*bf->biWidth+i)*bf->bpp+2])<<16) | 
-						   ((word | bf->bmp_buf[(j*bf->biWidth+i)*bf->bpp+1])<<8) | 
-						   ((word | bf->bmp_buf[(j*bf->biWidth+i)*bf->bpp]));
+					word = ((word | bf->bmp_buf[(j*bf->biWidth+i)*bf->Bpp+2])<<16) | 
+						   ((word | bf->bmp_buf[(j*bf->biWidth+i)*bf->Bpp+1])<<8) | 
+						   ((word | bf->bmp_buf[(j*bf->biWidth+i)*bf->Bpp]));
 					buf.vaddr[(j+y)*buf.width+(x+i)] = word;
 				}
 				else
@@ -176,7 +181,7 @@ int show_bmp(struct bmpfile *bf,int x ,int y)
 		}
 	}
 	else
-		printf("unsupport bpps!Please use 24bpps or 32bpps bmp file\n");
+		printf("unsupport Bpps!Please use 24Bpps or 32Bpps bmp file\n");
 	return 0;	
 }
 
