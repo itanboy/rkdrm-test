@@ -59,9 +59,9 @@ int decode_jpeg(char *filename,struct jpeg_file *jf)
 	//临时变量行buffer
 	uint8_t *pucbuffer;
 	//放大倍率
-	jf->cinfo.scale_num = 7;
+	jf->cinfo.scale_num = 2;
 	//缩小倍率
-	jf->cinfo.scale_denom = 2;
+	jf->cinfo.scale_denom = 1;
 
 	//对cinfo所指定的源文件进行解压，并将解压后的数据存到cinfo结构体的成员变量中。
     jpeg_start_decompress(&jf->cinfo);
@@ -163,8 +163,7 @@ int main(int argc, char **argv)
 	getchar();
 	
     fclose(jf.fp);
-	// free_jpeg(&jf);
-	free(jf.buffer);
+	free_jpeg(&jf);
 	drm_exit();	
 	return 0;
 
