@@ -40,7 +40,7 @@ static int drm_create_fb(struct drm_device *bo)
 {
 	/* create a dumb-buffer, the pixel format is XRGB888 */
 	bo->create.width = bo->width;
-	bo->create.height = bo->height*2;
+	bo->create.height = bo->height;
 	bo->create.bpp = 32;
 
 	/* handle, pitch, size will be returned */
@@ -50,7 +50,7 @@ static int drm_create_fb(struct drm_device *bo)
 	bo->pitch = bo->create.pitch;
 	bo->size = bo->create.size;
 	bo->handle = bo->create.handle;
-	drmModeAddFB(fd, bo->width, bo->height*2, 24, 32, bo->pitch,
+	drmModeAddFB(fd, bo->width, bo->height, 24, 32, bo->pitch,
 			   bo->handle, &bo->fb_id);
 	
 	//每行占用字节数，共占用字节数，MAP_DUMB的句柄
@@ -80,7 +80,6 @@ static void drm_destroy_fb(struct drm_device *bo)
 
 int drm_init()
 {
-	int i;
 	//打开drm设备，设备会随设备树的更改而改变,多个设备时，请留一下每个屏幕设备对应的drm设备
 	fd = open("/dev/dri/card0", O_RDWR | O_CLOEXEC);
     if(fd < 0){
@@ -93,32 +92,14 @@ int drm_init()
 	crtc_id = res->crtcs[0];
 	conn_id = res->connectors[0];
 	//打印CRTCS,以及conneter的id
-	// printf("crtc = %d , conneter = %d\n",crtc_id,conn_id);
-	// printf("count_fbs = %d , count_encoders = %d\n",res->count_fbs,res->count_encoders);
-	// printf("count_connectors= %d , count_crtcs; = %d\n",res->count_connectors,res->count_crtcs);
-	// printf("min_width = %d , max_width = %d\n",res->min_width,res->max_width);
-	// printf("min_height= %d , max_height = %d\n",res->min_height,res->max_height);
+	printf("crtc = %d , conneter = %d\n",crtc_id,conn_id);
 
 	conn = drmModeGetConnector(fd, conn_id);
 	buf.width = conn->modes[0].hdisplay;
 	buf.height = conn->modes[0].vdisplay;
 
 	//打印屏幕分辨率
-	printf("width = %d , height = %d\n",conn->modes[0].hdisplay,conn->modes[0].vdisplay);
-	printf("connector_id = %d , encoder_id = %d\n",conn->connector_id,conn->encoder_id);
-	printf("connector_type = %d , count_encoders = %d\n",conn->connector_id,conn->count_encoders);
-	printf("mmWidth = %d , mmHeight = %d\n",conn->mmWidth,conn->mmHeight);
-	printf("count_modes = %d , count_props = %d\n",conn->count_modes,conn->count_props);
-	for(i=0;i<conn->count_props;i++)
-		printf("No.%d = %d\n",i,conn->props[i]);
-	printf("\n\n");
-	printf("clock = %d , vrefresh = %d\n",conn->modes[0].clock,conn->modes[0].vrefresh);
-	printf("hdisplay = %d , vdisplay = %d\n",conn->modes[0].hdisplay,conn->modes[0].vdisplay);
-	printf("hsync_start = %d , vsync_start = %d\n",conn->modes[0].hsync_start,conn->modes[0].vsync_start);
-	printf("hsync_end = %d , vsync_end = %d\n",conn->modes[0].hsync_end,conn->modes[0].vsync_end);
-	printf("hskew = %d , vscan = %d\n",conn->modes[0].hskew,conn->modes[0].vscan);
-	printf("flags = %d , type = %d\n",conn->modes[0].flags,conn->modes[0].type);
-	printf("name = %s\n",conn->modes[0].name);
+	printf("width = %d , height = %d\n",buf.width,buf.height);
 
 	//创建framebuffer层
 	drm_create_fb(&buf);
@@ -130,7 +111,7 @@ int drm_init()
 	return 0;
 }
 
-int drm_exit()
+void drm_exit()
 {
 	drm_destroy_fb(&buf);
 	drmModeFreeConnector(conn);
@@ -144,23 +125,10 @@ int main(int argc, char **argv)
 	drm_init();
 	sleep(2);
 	//清屏设置颜色
-
-
 	for(i=0;i<buf.width*buf.height;i++)
 		buf.vaddr[i] = 0x123456;
 
-	for(i=buf.width*buf.height;i<buf.width*buf.height*2;i++)
-		buf.vaddr[i] = 0x654321;
-
-	printf("%ld\n",sizeof(buf.vaddr));
-
 	sleep(2);
-
-	drmModeSetCrtc(fd, crtc_id, buf.fb_id,
-			0, 720, &conn_id, 1, &conn->modes[0]);
-		
-	sleep(2);
-
 	drm_exit();
 
 	exit(0);

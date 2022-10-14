@@ -15,7 +15,7 @@
 #define White 	0xffFFFFFF
 #define Red 	0xffFF0000
 #define Green 	0xff00ff00
-#define Blue 	0xff0000ff
+#define Blue 	0xff99ffff
 
 int fd;
 unsigned int *fb_mem  = NULL;	//设置显存的位数为32位
@@ -34,35 +34,38 @@ int main(void)
 		return -1;
 	}
 	/*--------------第二步--------------*/
-    fb_mem = (unsigned int *)mmap(NULL, 720*1280*4, 		//获取显存，映射内存
+ 
+ 	//获取屏幕的可变参数
+	ioctl(fd, FBIOGET_VSCREENINFO, &var);
+	//获取屏幕的固定参数
+	ioctl(fd, FBIOGET_FSCREENINFO, &fix);
+   
+  	//打印分辨率
+	printf("xres= %d,yres= %d \n",var.xres,var.yres);
+ 	//打印总字节数和每行的长度
+	printf("line_length=%d,smem_len= %d \n",fix.line_length,fix.smem_len);
+	printf("xpanstep=%d,ypanstep= %d \n",fix.xpanstep,fix.ypanstep);
+ 
+	/*--------------第三步--------------*/
+	
+  fb_mem = (unsigned int *)mmap(NULL, var.xres*var.yres*4, 		//获取显存，映射内存
 			PROT_READ |  PROT_WRITE, MAP_SHARED, fd, 0);   
 								  
 	if(fb_mem == MAP_FAILED){
 		perror("Mmap LCD");
 		return -1;	
 	}
-	/*--------------第三步--------------*/
-	//获取屏幕的可变参数
-	ioctl(fd, FBIOGET_VSCREENINFO, &var);
-	//获取屏幕的固定参数
-	ioctl(fd, FBIOGET_FSCREENINFO, &fix);
-	//设置屏幕，需要开启才能使用屏幕
-	ioctl(fd, FBIOPAN_DISPLAY, &var);
 
-	//打印分辨率
-	printf("xres= %d,yres= %d \n",var.xres,var.yres);
-    //打印总字节数和每行的长度
-	printf("line_length=%d,smem_len= %d \n",fix.line_length,fix.smem_len);
-	printf("xpanstep=%d,ypanstep= %d \n",fix.xpanstep,fix.ypanstep);
-			
-	memset(fb_mem,0xff,720*1280*4);		//清屏
+	memset(fb_mem,0xff,var.xres*var.yres*4);		//清屏
 	sleep(1);
 	/*--------------第四步--------------*/
 	//将屏幕全部设置成红色
 	for(i=0;i< var.xres*var.yres ;i++)
 		fb_mem[i] = Blue;
-
-	munmap(fb_mem,720*1280*4); //映射后的地址，通过mmap返回的值	
+	sleep(2);
+	memset(fb_mem,0x00,var.xres*var.yres*4);		//清屏
+	
+	munmap(fb_mem,var.xres*var.yres*4); //映射后的地址，通过mmap返回的值	
 	close(fd); 			//关闭fb0设备文件
 	return 0;			
 }
