@@ -21,9 +21,9 @@ extern const unsigned char BMP1[];
 int main(int argc, char *argv[])
 {
 	int i = 0; //用于循环
-	if(argc < 2){
+	if(argc < 3){
     printf("Wrong use !!!!\n");
-        printf("Usage: %s [dev]\n",argv[0]);
+        printf("Usage: %s [dev] [D/C PinNum]\n",argv[0]);
         return -1;
     }
 	printf("%s\n",argv[1]);
@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-	oled_init();
+	oled_init(argv[2]);
 	printf("oled_init\n");
 	OLED_Fill(0xFF);
 	while (1){

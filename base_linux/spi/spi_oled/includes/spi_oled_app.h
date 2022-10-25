@@ -24,8 +24,8 @@
 
 
 void pabort(const char *s);
-void spi_and_gpio_init(void);
-void oled_init(void);
+void spi_and_gpio_init(char *name);
+void oled_init(char *name);
 void OLED_SetPos(unsigned char x, unsigned char y);//设置起始点坐标
 void OLED_Fill(unsigned char bmp_dat);//全屏填充
 void OLED_ON(void);

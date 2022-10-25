@@ -16,6 +16,7 @@ static uint16_t delay;          //保存延时时间
 
 extern int fd;
 int fd_gpio_ctrl;
+static char gpio_path[75];
 
 /*程序中使用到的点阵 字库*/
 extern const unsigned char F16x16[];
@@ -31,42 +32,50 @@ void pabort(const char *s)
   abort();
 }
 
-int gpio_init(void)
+int gpio_init(char *name)
 {
-    int fd_gpio;
+    int fd;
     //index config
-    fd_gpio = open("/sys/class/gpio/export", O_WRONLY);
-    if(fd_gpio < 0)
-        return 1 ;
- 
-    write(fd_gpio, GPIO_INDEX, strlen(GPIO_INDEX));
-    close(fd_gpio);
- 
-    //direction config
-    fd_gpio = open("/sys/class/gpio/gpio" GPIO_INDEX "/direction", O_WRONLY);
-    if(fd_gpio < 0)
-        return 2;
- 
-    write(fd_gpio, "out", strlen("out"));
-    close(fd_gpio);
 
-	fd_gpio_ctrl = open("/sys/class/gpio/gpio" GPIO_INDEX "/value", O_WRONLY);
-    if(fd_gpio_ctrl < 0)
-        return 1;
+    sprintf(gpio_path, "/sys/class/gpio/gpio%s", name);
+
+    if (access("gpio_path", F_OK)){
+        fd = open("/sys/class/gpio/export", O_WRONLY);
+        if(fd < 0)
+            return 1 ;
+    
+        write(fd, name, strlen(name));
+        close(fd);
+    
+        //direction config
+        sprintf(gpio_path, "/sys/class/gpio/gpio%s/direction", name);
+        fd = open(gpio_path, O_WRONLY);
+        if(fd < 0)
+            return 2;
+        write(fd, "out", strlen("out"));
+        close(fd);
+    }
+
+	sprintf(gpio_path, "/sys/class/gpio/gpio%s/value", name);
+    fd_gpio_ctrl = open(gpio_path, O_WRONLY);
+    if(fd_gpio_ctrl < 0){
+        printf("open %s wrong\n",gpio_path);
+        return -1;
+    }
+       
 
     return 0;
 }
 
-int gpio_deinit(void)
+int gpio_deinit(char *name)
 {
-    int fd_gpio;
-	close(fd_gpio_ctrl);
-    fd_gpio = open("/sys/class/gpio/unexport", O_WRONLY);
-    if(fd_gpio < 0)
+    int fd;
+    fd = open("/sys/class/gpio/unexport", O_WRONLY);
+    if(fd < 0)
         return 1;
 
-    write(fd_gpio, GPIO_INDEX, strlen(GPIO_INDEX));
-    close(fd_gpio);
+    write(fd, name, strlen(name));
+    close(fd);
 
     return 0;
 }
@@ -84,6 +93,7 @@ int gpio_low(void)
     write(fd_gpio_ctrl, "0", 1);
     return 0;
 }
+
 
 /*
 * 执行SPI 发送函数
@@ -192,10 +202,10 @@ void OLED_OFF(void)
 /*
 * oled 初始化函数
 */
-void oled_init(void)
+void oled_init(char *name)
 {
 
-  	spi_and_gpio_init();
+  	spi_and_gpio_init(name);
 
   	spi_oled_send_commend(0xae);
   	spi_oled_send_commend(0xae); //--turn off oled panel
@@ -234,10 +244,10 @@ void oled_init(void)
 /*
 * 初始化SPI ,初始化OLED 使用到的命令、数据控制引脚
 */
-void spi_and_gpio_init(void)
+void spi_and_gpio_init(char *name)
 {
   	int ret = 0;
-  	gpio_init();
+  	gpio_init(name);
   	/*
 	 * spi mode 设置SPI 工作模式
 	 */
