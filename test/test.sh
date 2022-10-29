@@ -78,11 +78,11 @@ screen_test(){
 
     echo "SPI_D/C引脚:"$SPI_PIN 
 
-    /home/cat/lubancat-test/test/i2c_oled/i2c_oled /dev/i2c-3 &
-    /home/cat/lubancat-test/test/i2c_oled/i2c_oled /dev/i2c-5 &
-    /home/cat/lubancat-test/test/spi_oled/spi_oled /dev/spidev3.1 $SPI_PIN &
+    ./i2c_oled/i2c_oled /dev/i2c-3 &
+    ./i2c_oled/i2c_oled /dev/i2c-5 &
+    ./spi_oled/spi_oled /dev/spidev3.1 $SPI_PIN &
     sleep 1s
-    /home/cat/lubancat-test/test/spi_oled/spi_oled /dev/spidev3.0 $SPI_PIN &
+    ./spi_oled/spi_oled /dev/spidev3.0 $SPI_PIN &
     echo "------------------------------"
 }
 
@@ -123,14 +123,14 @@ gpio_test(){
     
     for ((i=0;i<12;i++))
     do
-        /home/cat/lubancat-test/test/gpio ${GPIO_PIN[$i]} 0
+        ./gpio ${GPIO_PIN[$i]} 0
     done
     sleep 1s
     for ((i=0;i<12;i++))
     do
-        /home/cat/lubancat-test/test/gpio ${GPIO_PIN[$i]} 1
+        ./gpio ${GPIO_PIN[$i]} 1
         sleep 0.3s
-        /home/cat/lubancat-test/test/gpio ${GPIO_PIN[$i]} 0
+        ./gpio ${GPIO_PIN[$i]} 0
     done
 
     echo "------------------------------"
@@ -142,7 +142,7 @@ pwm_test(){
     for j in 1 2 3 4; do
     echo "pwm"$j
         for i in 10000 30000 60000 80000 100000 400000 600000 900000 0; do
-            /home/cat/lubancat-test/test/pwm $j 1000000 $i
+            ./pwm $j 1000000 $i
             sleep 0.1s
         done
     done
